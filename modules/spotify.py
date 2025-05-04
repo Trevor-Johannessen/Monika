@@ -16,6 +16,13 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
     scope='user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private user-library-modify user-library-read'
 ))
 
+"""
+    TODO:
+        - Add function for restarting song (remember to delete from prompt)
+        - Add function to get device ids (similar to getting song ids)
+        - Add functions to control volume
+"""
+
 class SpotifyAgent(Agent):
     def __init__(self):
         super().__init__(
