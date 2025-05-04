@@ -1,35 +1,37 @@
 from pydantic import BaseModel
+from agents import RunResult
 from datetime import datetime
-
-class Prompt(BaseModel):
-        prompt: str
-        response: str
-        tools: list[str]
-        handoffs: list[str]
-        timestamp: datetime
+import json
 
 class Context:
-    def __init__(self, default_prompt=None):
-        self.default_prompt=default_prompt
+    def __init__(self):
         self.history=[]
-        self.history_head=None
+        self. last_update = datetime.now()
 
-    def setDefaultPrompt(self, prompt):
-        self.default_prompt=prompt
-        self.history_head = Prompt(
-            prompt=self.default_prompt,
-            response="",
-            tools=[],
-            handoffs=[],
-            datetime=None
-        )
-    def addContext(self, context: Prompt):
-        self.history.append(context)
+    def add(self, text: str, role: str = "user"):
+        self.addRaw({"role":role,"content":text})
 
-    def removeContext(self, i: int):
-        self.history.remove(i)
+    def addRaw(self, result: dict):
+        self.history.append(result)
+        self.last_update = datetime.now()
 
-    def clearContext(self):
-        self.history=[
-            Prompt(prompt=self.default_prompt)
-        ]
+    def set(self, context: RunResult):
+        self.history = context.to_input_list()
+        self.last_update = datetime.now()
+
+    def remove(self, i: int = -1):
+        if len(self.history) > 0:
+            self.history.remove(i)
+
+    def clear(self):
+        self.history=[]
+
+    def clean(self):
+        if len(self.history) < 1:
+            return
+        # Clear history if inactive for 15 minutes
+        if (datetime.now() - self.last_update).total_seconds() > 900: 
+            self.clear()
+    
+    def toJson(self):
+        return json.dumps([{"prompt": item.prompt, "response": item.response, "timestamp": item.timestamp.isoformat()} for item in self.history])

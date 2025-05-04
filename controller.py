@@ -4,12 +4,17 @@
 
 from orchestrator import OrchestrationAgent
 from conversationAgent import ConversationAgent
+from context import Context
 from agents import Runner
+
+
 class Controller():
 
     def __init__(self):
-        agent_list = []
+        self.history = Context()
+        
         # Import default agent
+        agent_list = []
         agent_list.append(ConversationAgent())
 
         # Import all modules
@@ -18,7 +23,17 @@ class Controller():
         self.orchestrator = OrchestrationAgent(agents=agent_list)
 
     async def prompt(self, text) -> str:
-        result = await Runner.run(self.orchestrator, text)
+
+        # Append user message
+        self.history.clean()
+        self.history.add(text)
+
+        result = await Runner.run(self.orchestrator, self.history.history)
+        
+        # Add result to chat history
+        self.history.set(result)
+
+        # Return result
         return result.final_output
 
     
