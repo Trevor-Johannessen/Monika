@@ -2,10 +2,10 @@
     The controller is responseible for setting up all required agents and giving an interface for them to be used. 
 """
 
-from orchestrator import OrchestrationAgent
-from conversationAgent import ConversationAgent
 from context import Context
 from agents import Runner
+from orchestrationAgent import OrchestrationAgent
+from conversationAgent import ConversationAgent
 
 
 class Controller():
