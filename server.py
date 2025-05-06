@@ -1,14 +1,13 @@
+from dotenv import load_dotenv
+load_dotenv()
 from fastapi import FastAPI
 from pydantic import BaseModel
-from dotenv import load_dotenv
 from voice import Voice
 from controller import Controller
 
 class Prompt(BaseModel):
     return_type: str
     prompt: str
-
-load_dotenv()
 
 app = FastAPI()
 voice = Voice(
