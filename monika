@@ -1,0 +1,4 @@
+#!/bin/bash
+
+cd /usr/local/bin/monika
+./venv/bin/uvicorn server:app --port 3333 --host 0.0.0.0

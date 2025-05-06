@@ -1,0 +1,9 @@
+[Unit]
+Description=Just Monika.
+
+[Service]
+User=tjohannessen
+ExecStart=/usr/local/bin/monika/monika
+
+[Install]
+WantedBy=multi-user.target
