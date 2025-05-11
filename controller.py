@@ -35,5 +35,11 @@ class Controller():
 
         # Return result
         return result.final_output
+    
+    def getHandoff(self, cls):
+        agent = cls()
+        if hasattr(agent, 'handoff'):
+            return  agent.handoff
+        return agent
 
     
