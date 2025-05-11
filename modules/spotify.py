@@ -1,7 +1,7 @@
 import os
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-from agents import Agent, function_tool
+from agents import Agent, function_tool, ModelSettings
 
 # Spotify API credentials
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
@@ -43,7 +43,8 @@ class SpotifyAgent(Agent):
                 transferPlayback,
                 addToLikedSongs,
                 playPlaylist
-            ]
+            ],
+            model_settings=ModelSettings(tool_choice="required")
         )
 
 @function_tool
