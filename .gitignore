@@ -1,1 +1,6 @@
 venv
+voice-history
+__pycache__
+.env
+.vscode
+.cache
