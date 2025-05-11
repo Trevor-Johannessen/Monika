@@ -8,19 +8,18 @@ class ScheduleTaskAgent(Agent):
         super().__init__(
             name="schedule_agent",
             instructions="You are apart of a larger chatbot. You handle running tasks in the future. If you are told to run something in some time relative to now, get the current time first.",
-            tools=[scheduleTask, listTask, removeTask],
+            tools=[scheduleTask, listTask, removeTask, getDatetime],
             model_settings=ModelSettings(tool_choice="required"),
-            handoffs=[UtilityAgent()]
         )
         self.handoff = handoff(
             agent=self,
             tool_description_override="This should be called when action needs to be taken in the future. This agent is also able to remove scheduled prompts and list which prompts have already been scheduled."
         )
     
-# @function_tool
-# def getDatetime() -> str:
-#     """Gets the current date and time"""
-#     return datetime.now().strftime("%Y-%m-%d %H:%M")
+@function_tool
+def getDatetime() -> str:
+    """Gets the current date and time"""
+    return datetime.now().strftime("%Y-%m-%d %H:%M")
 
 @function_tool
 def scheduleTask(time: str, task: str):
