@@ -1,7 +1,9 @@
 from dotenv import load_dotenv
+from fastapi.responses import StreamingResponse
 load_dotenv()
 from fastapi import FastAPI
 from pydantic import BaseModel
+from io import BytesIO
 from voice import Voice
 from controller import Controller
 
@@ -20,4 +22,11 @@ controller = Controller()
 async def prompt(data: Prompt):
     # Send prompt to orchestrator
     response = await controller.prompt(data.prompt)
-    return {"message": response}
+    if data.return_type == "audio":
+        audio = voice.generate_voice(response)
+        audio_bytes = BytesIO()
+        audio_bytes.write(audio)
+        audio_bytes.seek(0)
+        return StreamingResponse(audio_bytes, media_type="audio/mpeg")
+    else:
+        return {"message": response}
