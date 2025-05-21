@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from agents import Agent, function_tool, ModelSettings, handoff
-from modules.utility import UtilityAgent
+from removeReasoningItems import removeReasoningItems
 
 class ScheduleTaskAgent(Agent):
     def __init__(self):
@@ -13,7 +13,8 @@ class ScheduleTaskAgent(Agent):
         )
         self.handoff = handoff(
             agent=self,
-            tool_description_override="This should be called when action needs to be taken in the future. This agent is also able to remove scheduled prompts and list which prompts have already been scheduled."
+            tool_description_override="This should be called when action needs to be taken in the future. This agent is also able to remove scheduled prompts and list which prompts have already been scheduled.",
+            input_filter=removeReasoningItems
         )
     
 @function_tool

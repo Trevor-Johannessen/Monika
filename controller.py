@@ -2,11 +2,12 @@
     The controller is responseible for setting up all required agents and giving an interface for them to be used. 
 """
 
+from removeReasoningItems import removeReasoningItems
 from context import Context
-from agents import Runner
+from agents import Runner, handoff
 from orchestrationAgent import OrchestrationAgent
 from conversationAgent import ConversationAgent
-
+from memoryAgent import MemoryAgent
 
 class Controller():
 
@@ -16,6 +17,7 @@ class Controller():
         # Import default agent
         agent_list = []
         agent_list.append(ConversationAgent())
+        agent_list.append(self.getHandoff(MemoryAgent))
 
         # Import all modules
 
@@ -40,6 +42,7 @@ class Controller():
         agent = cls()
         if hasattr(agent, 'handoff'):
             return  agent.handoff
-        return agent
+        ho = handoff(agent, input_filter=removeReasoningItems)
+        return ho
 
     
