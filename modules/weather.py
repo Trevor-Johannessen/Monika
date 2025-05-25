@@ -10,7 +10,8 @@ class WeatherAgent(Agent):
         super().__init__(
             name="weather_agent",
             instructions="You are a meteorologist apart of a larger home assistant chatbot. Your job is to get weather about given places and give a summary of relevant information. Assume the user only wants the current weather conditions unless otherwise specified. You have tools to help get the weather via the AccuWeather API. Answer only in plaintext and do not provide any links. Do not use Markdown or any other stylings. Any sources used should not be stated. Answer in Imperial units unless otherwise specified. Default to the shortest timespan available unless otherwise specified.",
-            tools=[getLocationKey, getNext12Hours, getNext5Days]
+            tools=[getLocationKey, getNext12Hours, getNext5Days],
+            model='o4-mini'
         )
 
 @function_tool

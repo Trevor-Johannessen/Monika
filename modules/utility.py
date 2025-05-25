@@ -17,7 +17,8 @@ class UtilityAgent(Agent):
                  - When displaying dates prefer to write out the entire name of the month. 
             """,
             tools=[getDatetime],
-            model_settings=ModelSettings(tool_choice="required")
+            model_settings=ModelSettings(tool_choice="required"),
+            model='o4-mini'
         )
     
 @function_tool

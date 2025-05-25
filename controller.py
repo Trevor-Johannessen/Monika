@@ -7,7 +7,11 @@ from context import Context
 from agents import Runner, handoff
 from orchestrationAgent import OrchestrationAgent
 from conversationAgent import ConversationAgent
-from memoryAgent import MemoryAgent
+from memoryAgent import MemorizeAgent, RecallAgent
+from modules.scheduleTask import ScheduleTaskAgent
+from modules.spotify import SpotifyAgent
+from modules.utility import UtilityAgent
+from modules.weather import WeatherAgent
 
 class Controller():
 
@@ -16,8 +20,9 @@ class Controller():
         
         # Import default agent
         agent_list = []
-        agent_list.append(ConversationAgent())
-        agent_list.append(self.getHandoff(MemoryAgent))
+        agent_list.append(self.getHandoff(ConversationAgent))
+        agent_list.append(self.getHandoff(MemorizeAgent))
+        agent_list.append(self.getHandoff(RecallAgent))
 
         # Import all modules
 
@@ -29,11 +34,13 @@ class Controller():
         # Append user message
         self.history.clean()
         self.history.add(text)
-
-        result = await Runner.run(self.orchestrator, self.history.history)
         
-        # Add result to chat history
-        self.history.set(result)
+        # Generate results.
+        for _ in range(0,2):        
+            result = await Runner.run(self.orchestrator, self.history.history)
+            self.history.set(result)
+            if isinstance(result.last_agent, ConversationAgent):
+                break
 
         # Return result
         return result.final_output
@@ -42,7 +49,6 @@ class Controller():
         agent = cls()
         if hasattr(agent, 'handoff'):
             return  agent.handoff
-        ho = handoff(agent, input_filter=removeReasoningItems)
-        return ho
+        return agent
 
     

@@ -1,20 +1,30 @@
 import os
 from datetime import datetime
-from agents import Agent, function_tool, ModelSettings, handoff
-from removeReasoningItems import removeReasoningItems
+from agents import Agent, function_tool, handoff
 
 class ScheduleTaskAgent(Agent):
     def __init__(self):
         super().__init__(
             name="schedule_agent",
-            instructions="You are apart of a larger chatbot. You handle running tasks in the future. If you are told to run something in some time relative to now, get the current time first.",
+            instructions="""You are apart of a larger chatbot. You handle scheduling tasks to run in the future. If you are told to run something in some time relative to now, get the current time first. When scheduled tasks are executed, a prompt will be fed back into the chatbot to interpret at that lataer time.
+                INSTRUCTIONS:
+                    SCHEDULING A TASK:
+                    - Think of the time to run the task is relative to the current time.
+                    - If the task is relative to the current time, get the current time via the getDatetime tool
+                    - Think of a prompt that would describe what the user wants in the future
+                    - Schedule the task.
+
+                    REMOVING A TASK:
+                    - If you do not know the numerical id of the task to remove, call listTask first to get context.
+                    - Find what task id most closely matches what the user wants to remove. If no tasks are similar, you may stop thinking and return without calling a function.
+                    - Remove the selected task id.
+            """,
             tools=[scheduleTask, listTask, removeTask, getDatetime],
-            model_settings=ModelSettings(tool_choice="required"),
+            model='o4-mini'
         )
         self.handoff = handoff(
             agent=self,
             tool_description_override="This should be called when action needs to be taken in the future. This agent is also able to remove scheduled prompts and list which prompts have already been scheduled.",
-            input_filter=removeReasoningItems
         )
     
 @function_tool
@@ -57,7 +67,7 @@ def removeTask(job_number: int):
     data = os.system(f"atrm {job_number}")
     if data.returncode == 0:
         return "Success!"
-    return "Could not schedule task." 
+    return "Could not remove task." 
 
 @function_tool    
 def scheduleReoccuring(minute: str, hour: str, day_of_month: str, month: str, day_of_week: str, task: str):
