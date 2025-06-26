@@ -18,7 +18,6 @@ class UtilityAgent(Agent):
             """,
             tools=[getDatetime],
             model_settings=ModelSettings(tool_choice="required"),
-            model='o4-mini'
         )
     
 @function_tool

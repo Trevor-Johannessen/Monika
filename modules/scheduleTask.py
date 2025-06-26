@@ -20,7 +20,6 @@ class ScheduleTaskAgent(Agent):
                     - Remove the selected task id.
             """,
             tools=[scheduleTask, listTask, removeTask, getDatetime],
-            model='o4-mini'
         )
         self.handoff = handoff(
             agent=self,

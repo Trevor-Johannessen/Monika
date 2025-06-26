@@ -45,7 +45,6 @@ class SpotifyAgent(Agent):
                 playPlaylist
             ],
             model_settings=ModelSettings(tool_choice="required"),
-            agent='o4-mini'
         )
 
 @function_tool

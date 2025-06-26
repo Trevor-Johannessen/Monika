@@ -26,5 +26,4 @@ class OrchestrationAgent(Agent):
             - Never come up with responses yourself, always delegate that to the orchestration agent.
             """,
             handoffs=agents,
-            model="o4-mini",
         )

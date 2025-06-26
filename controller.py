@@ -7,7 +7,7 @@ from context import Context
 from agents import Runner, handoff
 from orchestrationAgent import OrchestrationAgent
 from conversationAgent import ConversationAgent
-from memoryAgent import MemorizeAgent, RecallAgent
+from NoteAgent import NoteAgent
 from modules.scheduleTask import ScheduleTaskAgent
 from modules.spotify import SpotifyAgent
 from modules.utility import UtilityAgent
@@ -21,8 +21,7 @@ class Controller():
         # Import default agent
         agent_list = []
         agent_list.append(self.getHandoff(ConversationAgent))
-        agent_list.append(self.getHandoff(MemorizeAgent))
-        agent_list.append(self.getHandoff(RecallAgent))
+        agent_list.append(self.getHandoff(NoteAgent))
 
         # Import all modules
 
@@ -36,11 +35,8 @@ class Controller():
         self.history.add(text)
         
         # Generate results.
-        for _ in range(0,2):        
-            result = await Runner.run(self.orchestrator, self.history.history)
-            self.history.set(result)
-            if isinstance(result.last_agent, ConversationAgent):
-                break
+        result = await Runner.run(self.orchestrator, self.history.history)
+        self.history.set(result)
 
         # Return result
         return result.final_output
