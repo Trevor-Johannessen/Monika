@@ -7,7 +7,7 @@ from context import Context
 from agents import Runner, handoff
 from orchestrationAgent import OrchestrationAgent
 from conversationAgent import ConversationAgent
-from NoteAgent import NoteAgent
+from modules.NoteAgent import NoteAgent
 from modules.scheduleTask import ScheduleTaskAgent
 from modules.spotify import SpotifyAgent
 from modules.utility import UtilityAgent
@@ -21,7 +21,6 @@ class Controller():
         # Import default agent
         agent_list = []
         agent_list.append(self.getHandoff(ConversationAgent))
-        agent_list.append(self.getHandoff(NoteAgent))
 
         # Import all modules
 
