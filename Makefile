@@ -10,7 +10,7 @@ install: dryrun
 	cp monika.service /etc/systemd/system/
 	mkdir -p /var/lib/monika
 	mkdir -p /etc/monika
-	echo "[]" > /etc/monika/tags.json
+	test -f /etc/monika/tags.json || echo "[]" > /etc/monika/tags.json
 	systemctl daemon-reload
 	systemctl start monika
 
