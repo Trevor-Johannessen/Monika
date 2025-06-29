@@ -10,6 +10,7 @@ from controller import Controller
 class Prompt(BaseModel):
     return_type: str
     prompt: str
+    attributes: dict
 
 app = FastAPI()
 voice = Voice(
@@ -20,6 +21,11 @@ controller = Controller()
 
 @app.post("/prompt")
 async def prompt(data: Prompt):
+    # Append attributes to prompt
+    pairs = [f"{key}: {data.attributes[key]}" for key in data.attributes.keys()]
+    if len(data.attributes) > 0:
+        data.prompt += f"\n\nBelow is a list of attributes that may in fufilling the prompt:\n{'\n'.join(pairs)}"
+
     # Send prompt to orchestrator
     response = await controller.prompt(data.prompt)
     if data.return_type == "audio":
