@@ -5,7 +5,8 @@ dryrun:
 	rsync -avn ${EXCLUDE_FLAGS} ./ \ /usr/local/bin/monika/
 
 install: dryrun
-	if [ ! -e ./venv ]; then python3 -m venv venv; source ./venv/bin/activate; pip install -r requirements.txt; deactivate; fi
+	if [ ! -e /usr/local/bin/monika/venv ]; then python3 -m venv /usr/local/bin/monika/venv; fi
+	/usr/local/bin/monika/venv/bin/pip install -r requirements.txt
 	cp monika.service /etc/systemd/system/
 	systemctl stop monika
 	rsync -av ${EXCLUDE_FLAGS} ./ /usr/local/bin/monika/
