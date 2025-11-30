@@ -12,4 +12,5 @@ install: dryrun
 	systemctl daemon-reload
 	systemctl start monika
 
-
+debug:
+	./venv/bin/uvicorn server:app --port 3334 --host 0.0.0.0
