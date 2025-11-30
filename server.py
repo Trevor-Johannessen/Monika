@@ -9,6 +9,7 @@ from controller import Controller
 
 class Prompt(BaseModel):
     return_type: str
+    attributes: dict
     prompt: str
 
 app = FastAPI()
@@ -20,6 +21,7 @@ controller = Controller()
 
 @app.post("/prompt")
 async def prompt(data: Prompt):
+    print(f"USER> {data.prompt} {data.attributes}")
     # Send prompt to orchestrator
     response = await controller.prompt(data.prompt)
     if data.return_type == "audio":
@@ -29,4 +31,5 @@ async def prompt(data: Prompt):
         audio_bytes.seek(0)
         return StreamingResponse(audio_bytes, media_type="audio/mpeg")
     else:
+        print(f"BOT> {response}") 
         return {"message": response}
