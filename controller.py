@@ -7,7 +7,7 @@ from context import Context
 from agents import Runner, handoff
 from orchestrationAgent import OrchestrationAgent
 from conversationAgent import ConversationAgent
-from memoryAgent import MemoryAgent
+#from memoryAgent import MemoryAgent
 
 class Controller():
 
@@ -17,7 +17,7 @@ class Controller():
         # Import default agent
         agent_list = []
         agent_list.append(ConversationAgent())
-        agent_list.append(self.getHandoff(MemoryAgent))
+        #agent_list.append(self.getHandoff(MemoryAgent))
 
         # Import all modules
 
