@@ -29,10 +29,10 @@ def getLocationKey(location_name: str) -> dict:
     )
     # Error handling
     if response.status_code != 200:
-        return "There was an error getting locations."
+        return "Tell the user there was an error getting locations."
     locations = response.json()
     if len(locations) == 0:
-        return f"Could not find any locations matching {location_name}."
+        return f"Tell the user you could not find any locations matching {location_name}."
     
     # Trim excess information
     for location in locations:
@@ -56,7 +56,7 @@ def getNext12Hours(location_key: str, metric: bool) -> dict:
         }
     )
     if response.status_code != 200:
-        return "There was an error getting the weather."
+        return "Tell the user there was an error getting the weather."
     return response.json()
     
 @function_tool
@@ -76,5 +76,5 @@ def getNext5Days(location_key: str, metric: bool) -> dict:
         }
     )
     if response.status_code != 200:
-        return "There was an error getting the weather."
+        return "Tell the user there was an error getting the weather."
     return response.json()
