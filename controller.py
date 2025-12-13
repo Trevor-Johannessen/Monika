@@ -7,7 +7,11 @@ from context import Context
 from agents import Runner, handoff
 from orchestrationAgent import OrchestrationAgent
 from conversationAgent import ConversationAgent
+from prompt import Prompt
 #from memoryAgent import MemoryAgent
+from modules.weather import WeatherAgent
+from modules.spotify import SpotifyAgent
+from modules.scheduleTask import ScheduleTaskAgent
 
 class Controller():
 
@@ -20,12 +24,17 @@ class Controller():
         #agent_list.append(self.getHandoff(MemoryAgent))
 
         # Import all modules
+        agent_list.append(WeatherAgent())
+        agent_list.append(SpotifyAgent())
+        agent_list.append(ScheduleTaskAgent())
 
         # Set up the orchestrator
         self.orchestrator = OrchestrationAgent(agents=agent_list)
 
-    async def prompt(self, text) -> str:
-
+    async def prompt(self, prompt: Prompt) -> str:
+        # Assemble prompt into text
+        text = f"{prompt.prompt}\n\nBelow is information that may help with the above prompt. Only use relevant information:\n{prompt.attributes}"
+        
         # Append user message
         self.history.clean()
         self.history.add(text)
