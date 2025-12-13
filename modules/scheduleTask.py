@@ -27,7 +27,7 @@ def scheduleTask(time: str, task: str):
     """Schedules a task at a given date and time.
     
     Args:
-        time: The date and time for the task to be executed using 'HH:MM AM/PM YYYY-MM-DD' syntax.
+        time: The date and time for the task to be executed using 'HH:MM AM/PM YYYY-MM-DD' syntax. This time will be passed into the 'at' linux command.
         task: A prompt describing what should be executed at the given time. This task will be fed into the AI and interpreted at time of execution.
     """
     try:
