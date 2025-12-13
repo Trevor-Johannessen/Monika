@@ -10,9 +10,8 @@ class OrchestrationAgent(Agent):
             You should then handoff to the memory agent to query that information.
             Then, you may hand off to the apropriate agent based on the request.
             If the conversation contains information that is relevant to the user or chatbot.
-            If it seems like there is nothing more to be done, call the conversation agent.
             """,
             handoffs=agents,
-            model="o4-mini",
+            model="gpt-5-nano",
         )
  
