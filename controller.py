@@ -2,7 +2,6 @@
     The controller is responseible for setting up all required agents and giving an interface for them to be used. 
 """
 
-from removeReasoningItems import removeReasoningItems
 from context import Context
 from agents import Runner, handoff
 from orchestrationAgent import OrchestrationAgent
@@ -51,7 +50,7 @@ class Controller():
         agent = cls()
         if hasattr(agent, 'handoff'):
             return  agent.handoff
-        ho = handoff(agent, input_filter=removeReasoningItems)
+        ho = handoff(agent)
         return ho
 
     
