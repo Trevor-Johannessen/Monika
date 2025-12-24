@@ -83,7 +83,7 @@ def memorize(id: str, metadata: List[MetadataItem], text: str) -> str:
             ids=[id],
             embeddings=embeddings,
             documents=[text],
-            metadatas=metadata
+            metadatas={item['key']: item['value'] for item in metadata}
         )
     except Exception as e:
         return e

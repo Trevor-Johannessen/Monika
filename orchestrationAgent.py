@@ -10,8 +10,9 @@ class OrchestrationAgent(Agent):
             You should then handoff to the memory agent to query that information.
             Then, you may hand off to the apropriate agent based on the request.
             If the conversation contains information that is relevant to the user or chatbot.
+            If there are no appropriate agents, call the conversation agent.
             """,
-            handoffs=agents,
+            tools=[agent.as_tool(agent.name, agent.instructions) for agent in agents],
             model="gpt-5-nano",
         )
  

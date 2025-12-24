@@ -7,10 +7,11 @@ from agents import Runner, handoff
 from orchestrationAgent import OrchestrationAgent
 from conversationAgent import ConversationAgent
 from prompt import Prompt
-#from memoryAgent import MemoryAgent
+from memoryAgent import MemoryAgent
 from modules.weather import WeatherAgent
 from modules.spotify import SpotifyAgent
 from modules.scheduleTask import ScheduleTaskAgent
+from modules.system import SystemAgent
 
 class Controller():
 
@@ -20,7 +21,8 @@ class Controller():
         # Import default agent
         agent_list = []
         agent_list.append(ConversationAgent())
-        #agent_list.append(self.getHandoff(MemoryAgent))
+        agent_list.append(MemoryAgent())
+        agent_list.append(SystemAgent())
 
         # Import all modules
         agent_list.append(WeatherAgent())
@@ -33,14 +35,13 @@ class Controller():
     async def prompt(self, prompt: Prompt) -> str:
         # Assemble prompt into text
         text = f"{prompt.prompt}\n\nBelow is information that may help with the above prompt. Only use relevant information:\n{prompt.attributes}"
-        
-        # Append user message
-        self.history.clean()
-        self.history.add(text)
 
-        result = await Runner.run(self.orchestrator, self.history.history)
+        # Wipe chat if inactive 
+        self.history.clean()
         
-        # Add result to chat history
+        # Prompt the orchestrator
+        self.history.add(text)
+        result = await Runner.run(self.orchestrator, self.history.history)
         self.history.set(result)
 
         # Return result
