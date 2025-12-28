@@ -5,7 +5,6 @@
 from context import Context
 from agents import Runner, handoff
 from orchestrationAgent import OrchestrationAgent
-from conversationAgent import ConversationAgent
 from prompt import Prompt
 from memoryAgent import MemoryAgent
 from modules.weather import WeatherAgent
@@ -20,7 +19,6 @@ class Controller():
         
         # Import default agent
         agent_list = []
-        agent_list.append(ConversationAgent())
         agent_list.append(MemoryAgent())
         agent_list.append(SystemAgent())
 
