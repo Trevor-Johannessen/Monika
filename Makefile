@@ -5,6 +5,8 @@ dryrun:
 	rsync -avn ${EXCLUDE_FLAGS} ./ \ /usr/local/bin/monika/
 
 install: dryrun
+	firewall-cmd --permanent --add-port=3333/tcp
+	firewall-cmd --reload
 	if [ ! -e /usr/local/bin/monika/venv ]; then python3 -m venv /usr/local/bin/monika/venv; fi
 	/usr/local/bin/monika/venv/bin/pip install -r requirements.txt
 	mkdir -p /etc/monika
