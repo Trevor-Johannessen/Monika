@@ -1,11 +1,13 @@
 from dotenv import load_dotenv
-from fastapi.responses import StreamingResponse
 load_dotenv()
+from fastapi.responses import StreamingResponse
 from fastapi import FastAPI
 from prompt import Prompt
 from io import BytesIO
 from voice import Voice
 from controller import Controller
+import sounddevice as sd
+import soundfile as sf
 
 app = FastAPI()
 voice = Voice(
@@ -14,17 +16,26 @@ voice = Voice(
 )
 controller = Controller()
 
+
+filename = 'your_audio.wav'
+data, fs = sf.read(filename)
+
+
+
 @app.post("/prompt")
 async def prompt(data: Prompt):
-    print(f"USER> {data.prompt}\n\nBelow if extra information from the user. Ignore anything that is not immediately relevant:\n{data.attributes}")
-    # Send prompt to orchestrator
-    response = await controller.prompt(data)
+    print(f"USER> {data.prompt} {data.attributes}")
     if data.return_type == "audio":
-        audio = voice.generate_voice(response)
-        audio_bytes = BytesIO()
-        audio_bytes.write(audio)
-        audio_bytes.seek(0)
-        return StreamingResponse(audio_bytes, media_type="audio/mpeg")
+        filename = 'your_audio.wav'
+        data, fs = sf.read(filename)
+
+        devices = sd.query_devices()
+        device_id = None
+        for i, dev in enumerate(devices):
+            if 'VirtualMic' in dev['name']:
+                device_id = i
+                break
+            sd.play(data, fs, device=device_id)
+            sd.wait()
     else:
-        print(f"BOT> {response}") 
-        return {"message": response}
+        pass
