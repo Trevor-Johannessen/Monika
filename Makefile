@@ -8,7 +8,7 @@ install: dryrun
 	firewall-cmd --permanent --add-port=3333/tcp
 	firewall-cmd --reload
 	mkdir -p /var/lib/monika/memory.d
-	chown tjohannessen /var/lib/monika/memory.d
+	chown tjohannessen -R /var/lib/monika/memory.d
 	if [ ! -e /usr/local/bin/monika/venv ]; then python3 -m venv /usr/local/bin/monika/venv; fi
 	/usr/local/bin/monika/venv/bin/pip install -r requirements.txt
 	mkdir -p /etc/monika
@@ -16,6 +16,7 @@ install: dryrun
 	cp monika.service /etc/systemd/system/
 	systemctl stop monika
 	rsync -av ${EXCLUDE_FLAGS} ./ /usr/local/bin/monika/
+	cp -p .env /usr/local/bin/monika/
 	systemctl daemon-reload
 	systemctl start monika
 
