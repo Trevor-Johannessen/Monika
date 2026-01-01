@@ -28,8 +28,8 @@ class SpotifyAgent(Agent):
         super().__init__(
             name="spotify_agent",
             instructions="""
-                You control Spotify settings of the user of a chatbot. Use the provided tools to fulfill any requests as necessary.
-                Answer only in plaintext and do not provide any links. Do not use Markdown or any other stylings.
+                You control Spotify settings of the user of a chatbot. Use the provided tools to fulfill any requests as necessary. Respond with minimal information. Do not ask follow-up questions.
+                Answer only in plaintext and do not provide any links. Do not use Markdown or any other stylings. You can always assume the user is using spotify as their music player.
                 Some tips:
                     - You can restart a song by going to the previous song, and then going to the next song.
             """,
