@@ -9,6 +9,7 @@ import chromadb
 from chromadb.utils import embedding_functions
 from agents import Agent, function_tool, ModelSettings
 from typing_extensions import TypedDict, List
+from agentModel import AgentModel
 
 # Initalize clients
 chroma_client = chromadb.PersistentClient(path="/var/lib/monika/memory.d")
@@ -34,7 +35,7 @@ class MetadataItem(TypedDict):
     key: str
     value: str
 
-class MemoryAgent(Agent):
+class MemoryAgent(AgentModel):
     def __init__(self):
         super().__init__(
             name="memory_agent",

@@ -2,6 +2,7 @@ import os
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from agents import Agent, function_tool, ModelSettings
+from agentModel import AgentModel
 
 # Spotify API credentials
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
@@ -23,7 +24,7 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
         - Add functions to control volume
 """
 
-class SpotifyAgent(Agent):
+class SpotifyAgent(AgentModel):
     def __init__(self):
         super().__init__(
             name="spotify_agent",

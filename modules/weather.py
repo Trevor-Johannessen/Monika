@@ -1,10 +1,11 @@
 import os
 import requests
 from agents import Agent, function_tool
+from agentModel import AgentModel
 
 api_key = os.getenv("ACCUWEATHER_API_KEY")
 
-class WeatherAgent(Agent):
+class WeatherAgent(AgentModel):
     def __init__(self):
         super().__init__(
             name="weather_agent",

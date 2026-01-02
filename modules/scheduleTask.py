@@ -1,8 +1,9 @@
 import os
 from datetime import datetime
 from agents import Agent, function_tool, ModelSettings, handoff
+from agentModel import AgentModel
 
-class ScheduleTaskAgent(Agent):
+class ScheduleTaskAgent(AgentModel):
     def __init__(self):
         super().__init__(
             name="schedule_agent",
