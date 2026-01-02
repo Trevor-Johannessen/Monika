@@ -16,7 +16,7 @@ controller = Controller()
 
 @app.post("/prompt")
 async def prompt(data: Prompt):
-    print(f"USER> {data.prompt} {data.attributes}")
+    print(f"USER> {data.prompt}\n\nBelow if extra information from the user. Ignore anything that is not immediately relevant:\n{data.attributes}")
     # Send prompt to orchestrator
     response = await controller.prompt(data)
     if data.return_type == "audio":
