@@ -45,7 +45,7 @@ class MemoryAgent(Agent):
             TAGS:
             {chr(10).join(tags)}
             """,
-            model_settings=ModelSettings(tool_choice="required"),
+            model_settings=ModelSettings(),
             tools=[memorize, remember]
         )
 
