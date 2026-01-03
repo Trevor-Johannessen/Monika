@@ -1,27 +1,54 @@
 import os
 from datetime import datetime
 import shutil
-from elevenlabs import  save
-from elevenlabs.client import ElevenLabs
+from openai import OpenAI
 
 class Voice():
 
-    def __init__(self, model=None, directory=None):
-        api_key=os.environ.get("ELEVENLABS_API_KEY")
-        self.elevenlabs = ElevenLabs(api_key=api_key)
+    def __init__(
+        self,
+        model="gpt-4o-mini-tts",
+        directory=None,
+        voice="alloy",
+        instructions="Speak in a neutral tone."
+    ):
+        self.client=OpenAI()
         self.model=model
+        self.voice=voice
+        self.instructions=instructions
         self.directory=directory
         
-    def _save(self, stream):
+    def generate_voice(
+        self,
+        text,
+        voice=None,
+        model=None,
+        instructions=None,
+        directory=None
+    ):
+        voice = voice or self.voice
+        model = model or self.model
+        instructions = instructions or self.instructions
+        directory = directory or self.directory
+
         if not self.directory:
             raise Exception("No file path to store audio specified")
 
         time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        filename = f"{self.directory}/{time}.mp3"
+        filename = f"{directory}/{time}.mp3"
         filename_temp = f"./{time}.mp3"
     
-        # You HAVE to save the file first beacuase cloning the stream will cause two API calls
-        save(stream, filename_temp)
+
+        # Save the text to speech audio
+        with self.client.audio.speech.with_streaming_response.create(
+            model=model,
+            voice=voice,
+            input=text,
+            instructions=instructions,
+        ) as response:
+            response.stream_to_file(filename_temp)
+
+        # Move the file to the specified drive.
         with open(filename_temp, "rb") as f:
             audio_data = f.read()
             pid = os.fork()
@@ -29,17 +56,4 @@ class Voice():
                 shutil.move(filename_temp, filename)
                 os._exit(0)
             return audio_data
-    
-    def generate_voice(self, text, model=None):
-        model = model if model else self.model
-        if not model:
-            raise Exception("No default model nor any model provided")
 
-        audio_stream = self.elevenlabs.text_to_speech.convert(
-            text=text,
-            voice_id=model,
-            model_id="eleven_multilingual_v2",
-            output_format="mp3_44100_128"
-        )
-        audio = self._save(audio_stream)
-        return audio
