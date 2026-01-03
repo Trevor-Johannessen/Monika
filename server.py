@@ -9,8 +9,8 @@ from controller import Controller
 
 app = FastAPI()
 voice = Voice(
-    model="0yy6aROli0UmPMyExQ1S",
-    directory="/mnt/fs1/media/audio/voice-lines/monika/history"
+    voice="marin",
+    directory="/mnt/fs1/shared/media/audio/voice-lines/monika/history"
 )
 controller = Controller()
 
