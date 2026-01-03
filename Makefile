@@ -22,3 +22,10 @@ install: dryrun
 
 debug:
 	./venv/bin/uvicorn server:app --port 3334 --host 0.0.0.0
+
+commit:
+	cp settings.json settings.json.tmp
+	jq 'walk(if type != "object" then null else . end)' settings.json > tmp.json && mv tmp.json settings.json
+	git add settings.json
+	git commit
+
