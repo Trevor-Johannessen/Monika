@@ -6,11 +6,14 @@ from prompt import Prompt
 from io import BytesIO
 from voice import Voice
 from controller import Controller
+import json
 
+with open('settings.json', 'r') as f:
+    settings = json.load(f)
 app = FastAPI()
 voice = Voice(
-    voice="marin",
-    directory="/mnt/fs1/shared/media/audio/voice-lines/monika/history"
+    voice=settings['voice_name'],
+    directory=settings['voice_directory']
 )
 controller = Controller()
 
