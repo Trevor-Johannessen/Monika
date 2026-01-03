@@ -28,4 +28,4 @@ commit:
 	jq 'walk(if type != "object" then null else . end)' settings.json > tmp.json && mv tmp.json settings.json
 	git add settings.json
 	git commit
-
+	mv settings.json.tmp settings.json
