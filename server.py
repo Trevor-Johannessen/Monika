@@ -15,7 +15,7 @@ voice = Voice(
     voice=settings['voice_name'],
     directory=settings['voice_directory']
 )
-controller = Controller()
+controller = Controller(settings)
 
 @app.post("/prompt")
 async def prompt(data: Prompt):

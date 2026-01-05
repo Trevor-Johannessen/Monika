@@ -2,6 +2,7 @@
     The controller is responseible for setting up all required agents and giving an interface for them to be used. 
 """
 
+import requests
 from context import Context
 from agents import Runner, handoff
 from orchestrationAgent import OrchestrationAgent
@@ -14,33 +15,42 @@ from modules.system import SystemAgent
 
 class Controller():
 
-    def __init__(self):
+    def __init__(self, settings):
         self.history = Context()
-        
-        # Import default agent
+
+        # Import all modules
         agent_list = []
         agent_list.append(MemoryAgent())
         agent_list.append(SystemAgent())
-
-        # Import all modules
         agent_list.append(WeatherAgent())
         agent_list.append(SpotifyAgent())
         agent_list.append(ScheduleTaskAgent())
 
+        # Set up webhooks
+        self.webhooks = settings['webhooks'] if "webhooks" in settings else []
+
         # Set up the orchestrator
         self.orchestrator = OrchestrationAgent(agents=agent_list)
 
-    async def prompt(self, prompt: Prompt) -> str:
-        # Assemble prompt into text
-        text = f"{prompt.prompt}\n\nBelow is information that may help with the above prompt. Only use relevant information:\n{prompt.attributes}"
+    def update_webhook(self):
+        #requests.post(self.webhooks[0], json=self.history.toDict())#, headers={"Content-Type": "application/json"})
+        list(map(lambda url: requests.post(url, json=self.history.toDict()), self.webhooks))
 
-        # Wipe chat if inactive 
+    async def prompt(self, prompt: Prompt) -> str:
+        # Add prompt to context
+        text = f"{prompt.prompt}\n\nBelow is information that may help with the above prompt. Only use relevant information:\n{prompt.attributes}"
         self.history.clean()
-        
-        # Prompt the orchestrator
         self.history.add(text)
+
+        # Update webhook for prompt        
+        self.update_webhook()
+
+        # Prompt the orchestrator
         result = await Runner.run(self.orchestrator, self.history.history)
         self.history.set(result)
+
+        # Update webhook for response
+        self.update_webhook()
 
         # Return result
         return result.final_output

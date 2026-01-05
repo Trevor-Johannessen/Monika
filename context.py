@@ -35,4 +35,7 @@ class Context:
             self.clear()
     
     def toJson(self):
-        return json.dumps([{"prompt": item.prompt, "response": item.response, "timestamp": item.timestamp.isoformat()} for item in self.history])
+        return json.dumps(self.toDict())
+
+    def toDict(self):
+        return {"last_updated": self.last_update.strftime("%Y-%m-%d %H:%M:%S"), "history": self.history}
