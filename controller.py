@@ -3,6 +3,7 @@
 """
 
 import requests
+from datetime import datetime
 from context import Context
 from agents import Runner, handoff
 from orchestrationAgent import OrchestrationAgent
@@ -13,10 +14,12 @@ from modules.spotify import SpotifyAgent
 from modules.scheduleTask import ScheduleTaskAgent
 from modules.system import SystemAgent
 
+
 class Controller():
 
     def __init__(self, settings):
         self.history = Context()
+        self.settings = settings
 
         # Import all modules
         agent_list = []
@@ -34,7 +37,14 @@ class Controller():
 
     def update_webhook(self):
         #requests.post(self.webhooks[0], json=self.history.toDict())#, headers={"Content-Type": "application/json"})
-        list(map(lambda url: requests.post(url, json=self.history.toDict()), self.webhooks))
+        list(map(lambda url: self.post_webhook(url, self.history.toDict()), self.webhooks))
+    
+    def post_webhook(self, endpoint, message):
+        try:
+            requests.post(endpoint, json=message)
+        except Exception:
+            if self.settings['verbose']:
+                print(f"Could not update {endpoint}")
 
     async def prompt(self, prompt: Prompt) -> str:
         # Add prompt to context
@@ -46,8 +56,15 @@ class Controller():
         self.update_webhook()
 
         # Prompt the orchestrator
+        time_start = datetime.now()
         result = await Runner.run(self.orchestrator, self.history.history)
         self.history.set(result)
+        time_end = datetime.now()
+        time_delta = time_end - time_start
+
+        # Report stats if required
+        if self.settings['verbose']:
+            print(f"Response took {time_delta.total_seconds()} seconds.")
 
         # Update webhook for response
         self.update_webhook()
