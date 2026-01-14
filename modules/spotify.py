@@ -25,7 +25,7 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
 """
 
 class SpotifyAgent(AgentModel):
-    def __init__(self):
+    def __init__(self, settings={}):
         super().__init__(
             name="spotify_agent",
             instructions="""
@@ -45,7 +45,8 @@ class SpotifyAgent(AgentModel):
                 addToLikedSongs,
                 playPlaylist
             ],
-            model_settings=ModelSettings(tool_choice="required")
+            model_settings=ModelSettings(tool_choice="required"),
+            settings=settings
         )
 
 @function_tool

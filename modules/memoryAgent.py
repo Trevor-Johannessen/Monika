@@ -36,7 +36,7 @@ class MetadataItem(TypedDict):
     value: str
 
 class MemoryAgent(AgentModel):
-    def __init__(self):
+    def __init__(self, settings={}):
         super().__init__(
             name="memory_agent",
             instructions=f"""
@@ -47,7 +47,8 @@ class MemoryAgent(AgentModel):
             {chr(10).join(tags)}
             """,
             model_settings=ModelSettings(),
-            tools=[memorize, remember]
+            tools=[memorize, remember],
+            settings={}
         )
 
     def _add_tag(tag: str):

@@ -23,11 +23,10 @@ class Controller():
 
         # Import all modules
         agent_list = []
-        agent_list.append(MemoryAgent())
-        agent_list.append(SystemAgent())
-        agent_list.append(WeatherAgent())
-        agent_list.append(SpotifyAgent())
-        agent_list.append(ScheduleTaskAgent())
+        agent_list.append(MemoryAgent(settings=self.settings))
+        agent_list.append(WeatherAgent(settings=self.settings))
+        agent_list.append(SpotifyAgent(settings=self.settings))
+        agent_list.append(ScheduleTaskAgent(settings=self.settings))
 
         # Set up webhooks
         self.webhooks = settings['webhooks'] if "webhooks" in settings else []

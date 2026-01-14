@@ -2,5 +2,6 @@
   "voice_name": null,
   "voice_directory": null,
   "webhooks": null,
-  "verbose": null
+  "verbose": null,
+  "default_model": null
 }

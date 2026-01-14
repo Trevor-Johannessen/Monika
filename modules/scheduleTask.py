@@ -4,12 +4,13 @@ from agents import Agent, function_tool, ModelSettings, handoff
 from agentModel import AgentModel
 
 class ScheduleTaskAgent(AgentModel):
-    def __init__(self):
+    def __init__(self, settings={}):
         super().__init__(
             name="schedule_agent",
             instructions="You are apart of a larger chatbot. You handle running tasks in the future. If you are told to run something in some time relative to now, get the current time first.",
             tools=[scheduleTask, listTask, removeTask, getDatetime],
             model_settings=ModelSettings(tool_choice="required"),
+            settings=settings
         )
         self.handoff = handoff(
             agent=self,
