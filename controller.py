@@ -46,6 +46,9 @@ class Controller():
                 print(f"Could not update {endpoint}")
 
     async def prompt(self, prompt: Prompt) -> str:
+        # Add default attributes
+        prompt.attributes['time'] = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S") if 'time' not in prompt.attributes else prompt.attributes['time']
+
         # Add prompt to context
         text = f"{prompt.prompt}\n\nBelow is information that may help with the above prompt. Only use relevant information:\n{prompt.attributes}"
         self.history.clean()
