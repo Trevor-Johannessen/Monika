@@ -10,26 +10,30 @@ class Voice():
         model="gpt-4o-mini-tts",
         directory=None,
         voice="alloy",
-        instructions="Speak in a neutral tone."
+        speed=None,
+        instructions="Speak in a neutral tone.",
     ):
         self.client=OpenAI()
         self.model=model
         self.voice=voice
         self.instructions=instructions
         self.directory=directory
-        
+        self.speed = speed or 1
+       
     def generate_voice(
         self,
         text,
         voice=None,
         model=None,
         instructions=None,
-        directory=None
+        directory=None,
+        speed=None
     ):
         voice = voice or self.voice
         model = model or self.model
         instructions = instructions or self.instructions
         directory = directory or self.directory
+        speed = speed or self.speed
 
         if not self.directory:
             raise Exception("No file path to store audio specified")
@@ -45,6 +49,7 @@ class Voice():
             voice=voice,
             input=text,
             instructions=instructions,
+            speed=speed
         ) as response:
             response.stream_to_file(filename_temp)
 

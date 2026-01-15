@@ -13,7 +13,8 @@ with open('settings.json', 'r') as f:
 app = FastAPI()
 voice = Voice(
     voice=settings['voice_name'],
-    directory=settings['voice_directory']
+    directory=settings['voice_directory'],
+    speed = settings['voice_speed'] if 'voice_speed' in settings else None,
 )
 controller = Controller(settings)
 
