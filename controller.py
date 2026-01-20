@@ -12,7 +12,6 @@ from modules.memoryAgent import MemoryAgent
 from modules.weather import WeatherAgent
 from modules.spotify import SpotifyAgent
 from modules.scheduleTask import ScheduleTaskAgent
-from modules.system import SystemAgent
 
 
 class Controller():
