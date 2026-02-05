@@ -2,19 +2,32 @@ from dotenv import load_dotenv
 from fastapi.responses import StreamingResponse
 load_dotenv()
 from fastapi import FastAPI
+import os
 from prompt import Prompt
 from io import BytesIO
 from voice import Voice
 from controller import Controller
 import json
 
-with open('settings.json', 'r') as f:
+
+with open('defaults.json', 'r') as f:
     settings = json.load(f)
+settings = {k: v for k, v in settings.items() if v is not None}
+
+if os.path.exists('settings.json'):
+    with open('settings.json', 'r') as f:
+        for k, v in settings.items():
+            settings[k] = v
+
+if settings['verbose']:
+    print("SETTINGS:")
+    print(settings)
+
 app = FastAPI()
 voice = Voice(
     voice=settings['voice_name'],
     directory=settings['voice_directory'],
-    speed = settings['voice_speed'] if 'voice_speed' in settings else None,
+    speed = settings['voice_speed']
 )
 controller = Controller(settings)
 

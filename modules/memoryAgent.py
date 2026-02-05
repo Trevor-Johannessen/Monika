@@ -39,6 +39,7 @@ class MemoryAgent(AgentModel):
     def __init__(self, settings={}):
         super().__init__(
             name="memory_agent",
+            settings=settings,
             instructions=f"""
             
             You are an agent in charge or storing and retrieving information (also known as memories). Use the provided strings to search for relevant infromation. A good indicator that information is important to store is if the user responds with a statement instead of a question. Below is a list of metadata tags to use when querying. Do not add new tags unless it is unqiue enough to help with identification.
@@ -48,7 +49,6 @@ class MemoryAgent(AgentModel):
             """,
             model_settings=ModelSettings(),
             tools=[memorize, remember],
-            settings={}
         )
 
     def _add_tag(tag: str):

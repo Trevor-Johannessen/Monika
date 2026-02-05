@@ -28,10 +28,10 @@ class Controller():
         agent_list.append(ScheduleTaskAgent(settings=self.settings))
 
         # Set up webhooks
-        self.webhooks = settings['webhooks'] if "webhooks" in settings else []
+        self.webhooks = settings['webhooks']
 
         # Set up the orchestrator
-        self.orchestrator = OrchestrationAgent(agents=agent_list)
+        self.orchestrator = OrchestrationAgent(agents=agent_list, settings=settings)
 
     def update_webhook(self):
         #requests.post(self.webhooks[0], json=self.history.toDict())#, headers={"Content-Type": "application/json"})
