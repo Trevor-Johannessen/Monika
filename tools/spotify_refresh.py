@@ -1,3 +1,4 @@
+#! venv/bin/python3
 from dotenv import load_dotenv
 load_dotenv()
 import os
@@ -17,3 +18,5 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
     scope='user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private user-library-modify user-library-read',
     open_browser=False
 ))
+
+print(sp.current_playback())

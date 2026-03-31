@@ -1,6 +1,13 @@
 from dotenv import load_dotenv
 load_dotenv()
+import argparse
+import os
+import requests
 from voice import Voice
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--playback-server', type=str, default=None, help='URI to POST mp3 to (e.g. speaker.server:1234/play)')
+args = parser.parse_args()
 
 v = Voice(directory='./')
 
@@ -41,4 +48,12 @@ while True:
         for i in range(0, len(voices)):
             print(f"{i}: {voices[i]}")
     else:
-        v.generate_voice(msg, voice=voices[voice_id], instructions=instructions, directory=output_dir)
+        audio_data = v.generate_voice(msg, voice=voices[voice_id], instructions=instructions, directory=output_dir)
+        if args.playback_server:
+            url = f"http://{args.playback_server}"
+            tmpfile = "/tmp/voice_playback.mp3"
+            with open(tmpfile, "wb") as f:
+                f.write(audio_data)
+            with open(tmpfile, "rb") as f:
+                requests.post(url, files={"file": ("speech.mp3", f, "audio/mpeg")})
+            os.remove(tmpfile)
