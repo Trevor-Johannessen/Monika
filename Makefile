@@ -22,7 +22,7 @@ install: dryrun
 	systemctl status monika
 
 debug:
-	./venv/bin/uvicorn server:app --port 3334 --host 0.0.0.0
+	./venv/bin/python3 -m uvicorn server:app --port 3334 --host 0.0.0.0
 
 commit:
 	cp settings.json settings.json.tmp
