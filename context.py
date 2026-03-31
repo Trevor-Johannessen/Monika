@@ -4,10 +4,10 @@ from datetime import datetime
 import json
 
 class Context:
-    def __init__(self):
+    def __init__(self, system_text=""):
         self.history=[]
         self.last_update = datetime.now()
-        self.system_text = ""
+        self.system_text = system_text
         
     def add(self, text: str, role: str = "user"):
         self.addRaw({"role":role,"content":text})

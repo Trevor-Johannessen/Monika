@@ -17,15 +17,16 @@ from modules.scheduleTask import ScheduleTaskAgent
 class Controller():
 
     def __init__(self, settings):
-        self.history = Context()
         self.settings = settings
+        inital_prompt = settings['inital_prompt'] if 'inital_prompt' in settings else ""
+        self.history = Context(inital_prompt)
 
         # Import all modules
         agent_list = []
         agent_list.append(MemoryAgent(settings=self.settings))
         agent_list.append(WeatherAgent(settings=self.settings))
         agent_list.append(SpotifyAgent(settings=self.settings))
-        agent_list.append(ScheduleTaskAgent(settings=self.settings))
+        #agent_list.append(ScheduleTaskAgent(settings=self.settings))
 
         # Set up webhooks
         self.webhooks = settings['webhooks']

@@ -11,13 +11,12 @@ import json
 
 
 with open('defaults.json', 'r') as f:
-    settings = json.load(f)
-settings = {k: v for k, v in settings.items() if v is not None}
-
+    defaults = json.load(f)
+settings = {}
 if os.path.exists('settings.json'):
     with open('settings.json', 'r') as f:
-        for k, v in settings.items():
-            settings[k] = v
+        settings = json.load(f)
+settings = {**defaults, **settings}
 
 if settings['verbose']:
     print("SETTINGS:")
