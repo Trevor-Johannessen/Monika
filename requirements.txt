@@ -63,7 +63,7 @@ numpy==2.3.5
 oauthlib==3.3.1
 onnxruntime==1.23.2
 openai==2.8.1
-openai-agents==0.6.1
+anthropic
 opentelemetry-api==1.39.1
 opentelemetry-exporter-otlp-proto-common==1.39.1
 opentelemetry-exporter-otlp-proto-grpc==1.39.1

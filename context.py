@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from agents import RunResult
 from datetime import datetime
 import json
 
@@ -8,7 +7,7 @@ class Context:
         self.history=[]
         self.last_update = datetime.now()
         self.system_text = system_text
-        
+
     def add(self, text: str, role: str = "user"):
         self.addRaw({"role":role,"content":text})
 
@@ -16,8 +15,8 @@ class Context:
         self.history.append(result)
         self.last_update = datetime.now()
 
-    def set(self, context: RunResult):
-        self.history = context.to_input_list()
+    def set(self, messages: list):
+        self.history = messages
         self.last_update = datetime.now()
 
     def remove(self, i: int = -1):
@@ -31,9 +30,9 @@ class Context:
         if len(self.history) < 1:
             return
         # Clear history if inactive for 15 minutes
-        if (datetime.now() - self.last_update).total_seconds() > 900: 
+        if (datetime.now() - self.last_update).total_seconds() > 900:
             self.clear()
-    
+
     def toJson(self):
         return json.dumps(self.toDict())
 

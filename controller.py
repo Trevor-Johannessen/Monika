@@ -1,11 +1,10 @@
 """
-    The controller is responseible for setting up all required agents and giving an interface for them to be used. 
+    The controller is responseible for setting up all required agents and giving an interface for them to be used.
 """
 
 import requests
 from datetime import datetime
 from context import Context
-from agents import Runner, handoff
 from orchestrationAgent import OrchestrationAgent
 from prompt import Prompt
 from modules.memoryAgent import MemoryAgent
@@ -37,7 +36,7 @@ class Controller():
     def update_webhook(self):
         #requests.post(self.webhooks[0], json=self.history.toDict())#, headers={"Content-Type": "application/json"})
         list(map(lambda url: self.post_webhook(url, self.history.toDict()), self.webhooks))
-    
+
     def post_webhook(self, endpoint, message):
         try:
             requests.post(endpoint, json=message)
@@ -54,13 +53,13 @@ class Controller():
         self.history.clean()
         self.history.add(text)
 
-        # Update webhook for prompt        
+        # Update webhook for prompt
         self.update_webhook()
 
         # Prompt the orchestrator
         time_start = datetime.now()
-        result = await Runner.run(self.orchestrator, self.history.history)
-        self.history.set(result)
+        result, messages = await self.orchestrator.run(self.history.history)
+        self.history.set(messages)
         time_end = datetime.now()
         time_delta = time_end - time_start
 
@@ -72,13 +71,4 @@ class Controller():
         self.update_webhook()
 
         # Return result
-        return result.final_output
-    
-    def getHandoff(self, cls):
-        agent = cls()
-        if hasattr(agent, 'handoff'):
-            return  agent.handoff
-        ho = handoff(agent)
-        return ho
-
-    
+        return result

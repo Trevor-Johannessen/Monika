@@ -2,14 +2,12 @@ __import__('pysqlite3')
 import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
-from agents import Agent
 import json
 from openai import OpenAI
 import chromadb
 from chromadb.utils import embedding_functions
-from agents import Agent, function_tool, ModelSettings
 from typing_extensions import TypedDict, List
-from agentModel import AgentModel
+from agentModel import AgentModel, ModelSettings, function_tool
 
 # Initalize clients
 chroma_client = chromadb.PersistentClient(path="/var/lib/monika/memory.d")

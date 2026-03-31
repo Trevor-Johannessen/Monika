@@ -1,8 +1,7 @@
 import os
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-from agents import Agent, function_tool, ModelSettings
-from agentModel import AgentModel
+from agentModel import AgentModel, ModelSettings, function_tool
 
 # Spotify API credentials
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')

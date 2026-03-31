@@ -1,7 +1,6 @@
 import os
 from datetime import datetime
-from agents import Agent, function_tool, ModelSettings, handoff
-from agentModel import AgentModel
+from agentModel import AgentModel, ModelSettings, function_tool
 
 class ScheduleTaskAgent(AgentModel):
     def __init__(self, settings={}):
@@ -12,10 +11,7 @@ class ScheduleTaskAgent(AgentModel):
             model_settings=ModelSettings(tool_choice="required"),
             settings=settings
         )
-        self.handoff = handoff(
-            agent=self,
-            tool_description_override="This should be called when action needs to be taken in the future. This agent is also able to remove scheduled prompts and list which prompts have already been scheduled.",
-        )
+        self.handoff_description = "This should be called when action needs to be taken in the future. This agent is also able to remove scheduled prompts and list which prompts have already been scheduled."
     
 @function_tool
 def getDatetime() -> str:

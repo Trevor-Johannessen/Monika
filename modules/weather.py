@@ -1,7 +1,6 @@
 import os
 import requests
-from agents import Agent, function_tool
-from agentModel import AgentModel
+from agentModel import AgentModel, function_tool
 
 api_key = os.getenv("ACCUWEATHER_API_KEY")
 
