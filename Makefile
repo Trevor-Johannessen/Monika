@@ -13,6 +13,7 @@ install: dryrun
 	/usr/local/bin/monika/venv/bin/pip install -r requirements.txt
 	mkdir -p /etc/monika
 	mkdir -p /etc/monika/html
+	chmod -R o+rw /etc/monika
 	if [ ! -e /etc/monika/tags.json ]; then echo "[]" > /etc/monika/tags.json; fi
 	cp monika.service /etc/systemd/system/
 	systemctl stop monika
