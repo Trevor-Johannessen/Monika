@@ -3,7 +3,7 @@
   "voice_directory": "./",
   "webhooks": [],
   "verbose": false,
-  "default_model": "gpt-4.1-nano",
+  "default_model": "gpt-5.4-nano",
   "voice_speed": 1.2,
   "inital_prompt": ""
 }
