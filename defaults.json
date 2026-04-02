@@ -5,5 +5,6 @@
   "verbose": false,
   "default_model": "gpt-5.4-nano",
   "voice_speed": 1.2,
-  "inital_prompt": ""
+  "inital_prompt": "",
+  "skills_directory": "./skills"
 }

@@ -2,6 +2,8 @@
     The controller is responseible for setting up all required agents and giving an interface for them to be used. 
 """
 
+import os
+import glob
 import requests
 from datetime import datetime
 from context import Context
@@ -20,6 +22,12 @@ class Controller():
     def __init__(self, settings):
         self.settings = settings
         inital_prompt = settings['inital_prompt'] if 'inital_prompt' in settings else ""
+
+        skills_dir = settings.get('skills_directory', './skills')
+        skills_text = self._load_skills(skills_dir)
+        if skills_text:
+            inital_prompt = (inital_prompt + "\n\n" if inital_prompt else "") + skills_text
+
         self.history = Context(inital_prompt)
 
         # Import all modules
@@ -35,6 +43,18 @@ class Controller():
 
         # Set up the orchestrator
         self.orchestrator = OrchestrationAgent(agents=agent_list, settings=settings)
+
+    def _load_skills(self, skills_dir: str) -> str:
+        path = os.path.join(os.path.dirname(__file__), skills_dir) if not os.path.isabs(skills_dir) else skills_dir
+        if not os.path.isdir(path):
+            return ""
+        parts = []
+        for filepath in sorted(glob.glob(os.path.join(path, "*.md"))):
+            with open(filepath, "r") as f:
+                parts.append(f.read().strip())
+        if not parts:
+            return ""
+        return "## Skills\n\n" + "\n\n---\n\n".join(parts)
 
     def update_webhook(self):
         #requests.post(self.webhooks[0], json=self.history.toDict())#, headers={"Content-Type": "application/json"})

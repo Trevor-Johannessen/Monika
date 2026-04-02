@@ -8,6 +8,8 @@ class Context:
         self.history=[]
         self.last_update = datetime.now()
         self.system_text = system_text
+        if system_text:
+            self.history.append({"role": "system", "content": system_text})
         
     def add(self, text: str, role: str = "user"):
         self.addRaw({"role":role,"content":text})
@@ -31,8 +33,10 @@ class Context:
         if len(self.history) < 1:
             return
         # Clear history if inactive for 15 minutes
-        if (datetime.now() - self.last_update).total_seconds() > 900: 
+        if (datetime.now() - self.last_update).total_seconds() > 900:
             self.clear()
+            if self.system_text:
+                self.history.append({"role": "system", "content": self.system_text})
     
     def toJson(self):
         return json.dumps(self.toDict())
