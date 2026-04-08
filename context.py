@@ -5,14 +5,25 @@ import json
 
 class Context:
     def __init__(self, system_text=""):
-        self.history=[]
+        self.history = []
         self.last_update = datetime.now()
         self.system_text = system_text
-        if system_text:
-            self.history.append({"role": "system", "content": system_text})
-        
+        self.history.append({"role": "system", "content": self._build_system_content()})
+
+    def _realtime_section(self):
+        now = datetime.now()
+        return f"## Realtime Information\nCurrent date and time: {now.strftime('%Y-%m-%d %H:%M:%S')}"
+
+    def _build_system_content(self):
+        parts = [self.system_text] if self.system_text else []
+        parts.append(self._realtime_section())
+        return "\n\n".join(parts)
+
+    def update(self):
+        self.history[0]["content"] = self._build_system_content()
+
     def add(self, text: str, role: str = "user"):
-        self.addRaw({"role":role,"content":text})
+        self.addRaw({"role": role, "content": text})
 
     def addRaw(self, result: dict):
         self.history.append(result)
@@ -27,17 +38,16 @@ class Context:
             self.history.remove(i)
 
     def clear(self):
-        self.history=[]
+        self.history = []
+        self.history.append({"role": "system", "content": self._build_system_content()})
 
     def clean(self):
-        if len(self.history) < 1:
+        if len(self.history) < 2:
             return
         # Clear history if inactive for 15 minutes
         if (datetime.now() - self.last_update).total_seconds() > 900:
             self.clear()
-            if self.system_text:
-                self.history.append({"role": "system", "content": self.system_text})
-    
+
     def toJson(self):
         return json.dumps(self.toDict())
 

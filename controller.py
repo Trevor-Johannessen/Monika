@@ -74,8 +74,9 @@ class Controller():
         # Add prompt to context
         text = f"{prompt.prompt}\n\nBelow is information that may help with the above prompt. Only use relevant information:\n{prompt.attributes}"
         self.history.clean()
+        self.history.update()
         self.history.add(text)
-
+        
         # Update webhook for prompt        
         self.update_webhook()
 
