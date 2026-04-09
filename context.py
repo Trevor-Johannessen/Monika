@@ -12,7 +12,9 @@ class Context:
 
     def _realtime_section(self):
         now = datetime.now()
-        return f"## Realtime Information\nCurrent date and time: {now.strftime('%Y-%m-%d %H:%M:%S')}"
+        out = "## Realtime Information\nCurrent date and time: "
+        #out += f"\n{now.strftime('%Y-%m-%d %H:%M:%S')}"
+        return out
 
     def _build_system_content(self):
         parts = [self.system_text] if self.system_text else []
