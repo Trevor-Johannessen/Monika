@@ -12,7 +12,9 @@ install: dryrun
 	if [ ! -e /usr/local/bin/monika/venv ]; then python3 -m venv /usr/local/bin/monika/venv; fi
 	/usr/local/bin/monika/venv/bin/pip install -r requirements.txt
 	mkdir -p /etc/monika
-	mkdir -p /etc/monika/html
+	mkdir -p /etc/monika/files/html
+	mkdir -p /etc/monika/files/notes
+	chown tjohannessen -R /etc/monika
 	if [ ! -e /etc/monika/tags.json ]; then echo "[]" > /etc/monika/tags.json; fi
 	cp monika.service /etc/systemd/system/
 	systemctl stop monika

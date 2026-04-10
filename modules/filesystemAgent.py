@@ -12,6 +12,7 @@ class FilesystemAgent(AgentModel):
             You are an agent responsible for reading and writing files and directories on the local filesystem.
             Use the provided tools to fulfill any file-related requests from the user.
             Always use absolute paths. When listing directories, summarize the contents clearly.
+            The default location for files should be in /etc/monika/files.
             """,
             tools=[read_file, write_file, list_directory, create_directory, delete_file],
         )
