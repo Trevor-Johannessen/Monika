@@ -43,12 +43,22 @@ def bash(command: str) -> str:
 
 
 class OrchestrationAgent(AgentModel):
-    def __init__(self, agents=[], outputType=None, settings={}):
+    def __init__(self, agents=[], outputType=None, settings={}, context=None):
         instructions = BASE_INSTRUCTIONS + load_skills()
+
+        tools = [agent.as_tool(agent.name, agent.instructions) for agent in agents] + [bash, WEB_SEARCH_TOOL]
+
+        if context is not None:
+            @function_tool
+            def clear_context() -> str:
+                """Clears the conversation history. Use this when the user asks to reset, clear, or start a new conversation."""
+                context.clear()
+                return "Conversation context has been cleared."
+            tools.append(clear_context)
+
         super().__init__(
             name="orchestration_agent",
             instructions=instructions,
-            tools=[agent.as_tool(agent.name, agent.instructions) for agent in agents]
-                  + [bash, WEB_SEARCH_TOOL],
+            tools=tools,
             settings=settings
         )

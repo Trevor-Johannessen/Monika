@@ -31,7 +31,7 @@ class Controller():
         self.webhooks = settings['webhooks']
 
         # Set up the orchestrator
-        self.orchestrator = OrchestrationAgent(agents=agent_list, settings=settings)
+        self.orchestrator = OrchestrationAgent(agents=agent_list, settings=settings, context=self.history)
 
     def update_webhook(self):
         #requests.post(self.webhooks[0], json=self.history.toDict())#, headers={"Content-Type": "application/json"})
