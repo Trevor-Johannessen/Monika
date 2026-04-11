@@ -22,7 +22,7 @@ class Controller():
 
         # Import all modules
         agent_list = []
-        agent_list.append(MemoryAgent(settings=self.settings))
+        #agent_list.append(MemoryAgent(settings=self.settings))
         agent_list.append(WeatherAgent(settings=self.settings))
         agent_list.append(SpotifyAgent(settings=self.settings))
         #agent_list.append(ScheduleTaskAgent(settings=self.settings))
