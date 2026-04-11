@@ -5,7 +5,8 @@ from fastapi import FastAPI
 import os
 from prompt import Prompt
 from io import BytesIO
-from voice import Voice
+from voice import Voice as OpenAIVoice
+from voice_elevenlabs import Voice as ElevenLabsVoice
 from controller import Controller
 import json
 
@@ -23,6 +24,7 @@ if settings['verbose']:
     print(settings)
 
 app = FastAPI()
+Voice = ElevenLabsVoice if settings['voice_provider'] == 'elevenlabs' else OpenAIVoice
 voice = Voice(
     voice=settings['voice_name'],
     directory=settings['voice_directory'],
