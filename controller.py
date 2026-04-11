@@ -11,6 +11,7 @@ from modules.memoryAgent import MemoryAgent
 from modules.weather import WeatherAgent
 from modules.spotify import SpotifyAgent
 from modules.scheduleTask import ScheduleTaskAgent
+from modules.claudeCode import ClaudeCodeAgent
 
 
 class Controller():
@@ -25,6 +26,7 @@ class Controller():
         #agent_list.append(MemoryAgent(settings=self.settings))
         agent_list.append(WeatherAgent(settings=self.settings))
         agent_list.append(SpotifyAgent(settings=self.settings))
+        agent_list.append(ClaudeCodeAgent(settings=self.settings))
         #agent_list.append(ScheduleTaskAgent(settings=self.settings))
 
         # Set up webhooks
