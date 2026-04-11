@@ -1,5 +1,6 @@
 annotated-doc==0.0.4
 annotated-types==0.7.0
+anthropic==0.94.0
 anyio==4.12.0
 asttokens==3.0.1
 attrs==25.4.0
@@ -19,6 +20,7 @@ cryptography==46.0.3
 debugpy==1.8.18
 decorator==5.2.1
 distro==1.9.0
+docstring_parser==0.17.0
 dotenv==0.9.9
 durationpy==0.10
 elevenlabs==2.24.0
@@ -30,6 +32,7 @@ fsspec==2025.12.0
 google-auth==2.43.0
 googleapis-common-protos==1.72.0
 griffe==1.15.0
+griffelib==2.0.2
 grpcio==1.76.0
 h11==0.16.0
 hf-xet==1.2.0
@@ -62,8 +65,8 @@ nest-asyncio==1.6.0
 numpy==2.3.5
 oauthlib==3.3.1
 onnxruntime==1.23.2
-openai==2.8.1
-openai-agents==0.6.1
+openai==2.31.0
+openai-agents==0.13.6
 opentelemetry-api==1.39.1
 opentelemetry-exporter-otlp-proto-common==1.39.1
 opentelemetry-exporter-otlp-proto-grpc==1.39.1
