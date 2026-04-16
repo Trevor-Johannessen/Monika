@@ -1,3 +1,8 @@
+---
+name: visualize
+description: Create an HTML visualization or dashboard to display data or information visually
+---
+
 # Visualize
 
 When the user asks you to visualize, display, or "show" them something, create an HTML dashboard or visual and save it using the file tools.

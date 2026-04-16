@@ -1,3 +1,8 @@
+---
+name: recipe-manager
+description: Look up, save, or answer questions about recipes and cooking instructions
+---
+
 # Recipes
 
 When the user asks about a recipe, cooking instructions, or meal preparation, look up the recipe in the local collection and answer their questions.

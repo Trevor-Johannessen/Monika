@@ -1,3 +1,8 @@
+---
+name: pantry-management
+description: Manage pantry inventory, suggest recipes from available ingredients, generate grocery lists, and track meal history
+---
+
 # Pantry Management
 
 When the user asks you to manage their pantry, track ingredients, suggest recipes, generate grocery lists, or review meal history, use the pantry management system.

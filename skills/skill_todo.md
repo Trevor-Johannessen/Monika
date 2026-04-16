@@ -1,3 +1,8 @@
+---
+name: todo-list
+description: Add, read, or remove items from the user's to-do list
+---
+
 # To-Do List Manager
 
 When the user asks you to add something to their to-do list, create a new to-do item file or update their to-do list. When the user asks to read their to-do list, display only the subject lines of all to-do items.

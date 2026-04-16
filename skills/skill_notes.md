@@ -1,3 +1,8 @@
+---
+name: notes
+description: Take, read, update, or delete persistent notes
+---
+
 # Notes
 
 When the user asks you to take a note, save something for later, read a note, look something up from notes, or update/revise a note, use the notes directory to read and write persistent notes.

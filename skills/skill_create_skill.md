@@ -1,3 +1,8 @@
+---
+name: create-skill
+description: Create a new skill file to teach Monika a new behavior or capability that persists across sessions
+---
+
 # Create Skill
 
 When the user asks you to create a new skill, teach you something new, or add a new capability, write a skill file so the behavior persists across future sessions.
@@ -15,7 +20,22 @@ All skill files go in `$PWD/skills/`. Use the `write_file` tool (via the filesys
 
 ## How to write a skill file
 
-A skill file is a markdown document. It should:
+A skill file is a markdown document. It must begin with a YAML frontmatter block containing `name` and `description`, followed by the full skill body:
+
+```markdown
+---
+name: skill-name
+description: One-sentence description of when this skill applies
+---
+
+# Skill Title
+
+Full instructions here...
+```
+
+The `name` field is used to load the skill by name. The `description` is shown to the agent in the skill index so it knows when to invoke the skill. Skill files without frontmatter are ignored.
+
+The body should:
 
 1. Start with a `# Title` heading that names the skill
 2. Describe **when** the skill applies — what kinds of user requests trigger it
@@ -32,6 +52,11 @@ Tell the user the skill has been saved and will be available the next time the s
 ## Example skill file
 
 ```markdown
+---
+name: set-timers
+description: Set a timer or reminder for the user at a specified time or duration
+---
+
 # Set Timers
 
 When the user asks you to set a timer or remind them about something, schedule a reminder using the task scheduler.
