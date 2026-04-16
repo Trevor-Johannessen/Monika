@@ -14,6 +14,13 @@ from modules.scheduleTask import ScheduleTaskAgent
 from modules.claudeCode import ClaudeCodeAgent
 
 
+VOICE_INSTRUCTION = (
+    "\n\nIMPORTANT: Respond using complete words only. Do not use any special characters "
+    "such as &, *, #, @, or degree symbols. Write out all units and measurements as words "
+    "(e.g. \"degrees\" not \"°\", \"and\" not \"&\", \"percent\" not \"%\")."
+)
+
+
 class Controller():
 
     def __init__(self, settings):
@@ -60,7 +67,16 @@ class Controller():
 
         # Prompt the orchestrator
         time_start = datetime.now()
-        result, messages = await self.orchestrator.run(self.history.history)
+        if prompt.return_type == "audio" and self.history.history:
+            run_history = list(self.history.history)
+            original_last = run_history[-1]
+            modified_last = dict(original_last)
+            modified_last["content"] = modified_last["content"] + VOICE_INSTRUCTION
+            run_history[-1] = modified_last
+            result, messages = await self.orchestrator.run(run_history)
+            messages[len(self.history.history) - 1] = original_last
+        else:
+            result, messages = await self.orchestrator.run(self.history.history)
         self.history.set(messages)
         time_end = datetime.now()
         time_delta = time_end - time_start
