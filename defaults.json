@@ -5,5 +5,8 @@
   "verbose": false,
   "default_model": "claude-haiku-4-5-20251001",
   "voice_speed": 1.2,
-  "inital_prompt": ""
+  "inital_prompt": "",
+  "minecraft_rcon_host": "localhost",
+  "minecraft_rcon_port": 25575,
+  "minecraft_rcon_password": ""
 }
