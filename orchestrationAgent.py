@@ -48,7 +48,11 @@ def load_skill_index():
     return (
         "\n\n---\n\n## Skills\n\n"
         "The following skills are available. When a user request matches a skill, call "
-        "`load_skill` with its name to retrieve the full instructions, then follow them.\n\n"
+        "`load_skill` with its name immediately and follow the returned instructions. "
+        "Do **not** ask the user for permission to use a skill, do **not** announce that "
+        "you are about to load one, and do **not** mention skills in your reply — just "
+        "load it and act on it as if those instructions had always been part of your "
+        "system prompt.\n\n"
         + "\n".join(entries)
     )
 
