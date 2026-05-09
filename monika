@@ -1,0 +1,45 @@
+#!/usr/local/bin/monika/venv/bin/python3
+import json
+import os
+import sys
+import requests
+
+SETTINGS_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "settings.json")
+
+with open(SETTINGS_PATH) as f:
+    HOST = json.load(f)["monika-cli-host"]
+
+ENDPOINT = f"http://{HOST}/prompt"
+
+
+def send(prompt: str) -> str:
+    response = requests.post(ENDPOINT, json={"prompt": prompt})
+    response.raise_for_status()
+    return response.json()["message"]
+
+
+def repl() -> None:
+    while True:
+        try:
+            text = input("USER: ")
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
+        if not text.strip():
+            continue
+        try:
+            print(f"MONIKA: {send(text)}")
+        except Exception as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+
+
+def main() -> None:
+    args = sys.argv[1:]
+    if not args or args[0] in ("--repl", "-r"):
+        repl()
+        return
+    print(send(" ".join(args)))
+
+
+if __name__ == "__main__":
+    main()
