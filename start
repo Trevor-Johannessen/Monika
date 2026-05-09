@@ -1,4 +1,8 @@
 #!/bin/bash
 
 cd /usr/local/bin/monika
-./venv/bin/uvicorn server:app --port 3333 --host 0.0.0.0
+PORT=$(jq -r '.port // empty' settings.json 2>/dev/null)
+if [ -z "$PORT" ]; then
+    PORT=$(jq -r '.port' defaults.json)
+fi
+./venv/bin/uvicorn server:app --port "$PORT" --host 0.0.0.0
