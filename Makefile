@@ -27,6 +27,12 @@ install: dryrun
 debug:
 	./venv/bin/python3 -m uvicorn server:app --port 3334 --host 0.0.0.0
 
+cli:
+	mkdir -p /usr/local/bin/monika
+	cp monika /usr/local/bin/monika/monika
+	cp settings.json /usr/local/bin/monika/settings.json
+	chmod +x /usr/local/bin/monika/monika
+
 commit:
 	cp settings.json settings.json.tmp
 	jq 'walk(if type != "object" then null else . end)' settings.json > tmp.json && mv tmp.json settings.json
