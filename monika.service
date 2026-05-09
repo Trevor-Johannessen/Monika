@@ -3,7 +3,7 @@ Description=Just Monika.
 
 [Service]
 User=tjohannessen
-ExecStart=/usr/local/bin/monika/monika
+ExecStart=/usr/local/bin/monika/start
 
 [Install]
 WantedBy=multi-user.target
