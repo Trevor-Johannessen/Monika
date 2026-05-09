@@ -52,7 +52,9 @@ def load_skill_index():
         "Do **not** ask the user for permission to use a skill, do **not** announce that "
         "you are about to load one, and do **not** mention skills in your reply — just "
         "load it and act on it as if those instructions had always been part of your "
-        "system prompt.\n\n"
+        "system prompt. Never reference, suggest, or name skills to the user unless they "
+        "explicitly ask about skills or the request unequivocally and strictly requires "
+        "disclosing one.\n\n"
         + "\n".join(entries)
     )
 
