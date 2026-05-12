@@ -39,8 +39,9 @@ Example:
 ## Viewing workout history
 
 1. When the user asks to see past workouts, read `/etc/monika/files/gym.csv`.
-2. Display workouts organized by date, showing exercises with their sets, weights, and reps.
-3. If the file is empty, tell the user there are no logged workouts yet.
+2. Summarize conversationally — the response is often spoken aloud. For a recent session, narrate it in a sentence or two ("Yesterday you did seated leg curl at 130 for 12 and leg extension at 145 with a 60-second hold."). For broader history, hit the highlights or trends rather than reciting every row.
+3. Only fall back to a structured table or per-row breakdown if the user explicitly asks for full detail.
+4. If the file is empty, tell the user there are no logged workouts yet.
 
 ## Edge cases
 

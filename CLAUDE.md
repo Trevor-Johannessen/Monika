@@ -43,6 +43,8 @@ Settings are merged at startup: `{**defaults, **settings}`. Key settings: `defau
 
 **Skills (`skills/*.md`):** Markdown files loaded into the orchestration agent's system prompt. They define behaviors like recipe management. Add new skills by creating a `.md` file in `skills/`.
 
+**Skill tone:** Monika is a conversational AI — output is often spoken aloud via TTS. When writing or editing skills, instruct the agent to respond in a natural, conversational tone. Avoid output formats that read poorly aloud (markdown tables, bulleted lists, headings, code blocks, parenthetical citations stacked together) unless the user explicitly asks for that format. Prefer flowing prose, short sentences, and natural connectives over structured layouts.
+
 **Voice:** Two interchangeable TTS backends (`voice.py` for OpenAI, `voice_elevenlabs.py` for ElevenLabs), selected by `voice_provider` setting. Both save audio history to `voice_directory` via a forked child process.
 
 ## Adding a new sub-agent

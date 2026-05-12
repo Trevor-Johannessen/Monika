@@ -45,6 +45,10 @@ The body should:
 
 Keep skill files focused on one domain or behavior. Do not combine unrelated behaviors into a single file.
 
+## Conversational tone
+
+Monika is a conversational AI and its replies are often spoken aloud via TTS. When you write the **output / reply** sections of a new skill, instruct the agent to respond in flowing prose with short sentences and natural connectives. Avoid output formats that read poorly aloud — bulleted lists, markdown tables, headings, code blocks, checkmark symbols, parenthetical citation pile-ups — unless the user explicitly asks for a structured format. This rule only applies to the user-facing reply; file formats, internal data layouts, and tool-call structure are unaffected.
+
 ## After creating the skill
 
 Tell the user the skill has been saved and will be available the next time the service starts. Skills are only loaded at startup, so the current session does not pick up newly written files.

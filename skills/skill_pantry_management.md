@@ -37,7 +37,7 @@ All pantry data lives in `/etc/monika/pantry/`:
 
 ### Viewing inventory
 
-Simply read and display the current contents of `inventory.md` in a clean, readable format.
+Read `inventory.md` and describe what's on hand conversationally — the response is often spoken aloud. For a small pantry, weave items into a sentence or two ("You've got three cups of olive oil, four cans of tomatoes, and a couple boxes of pasta."). For a large pantry, group by category in prose ("On the staples side… On the proteins side…"). Only fall back to a bulleted list if the user explicitly asks for one.
 
 ## Recipe suggestions
 
@@ -46,12 +46,9 @@ When the user asks "What can I make?" or "Suggest recipes":
 1. Read the current `inventory.md`
 2. Use the user's available ingredients to search for recipe ideas
 3. If the user also says "minimal shopping" or "with just one or two things": search for recipes that need only 1-2 additional ingredients beyond what they have
-4. Present recipes with:
-   - Recipe name
-   - Ingredients they already have (✓)
-   - Ingredients they need to buy (✗)
-5. If local recipes aren't available, use web_search to find recipes matching available ingredients
-6. Ask if they'd like to save any recipes to `/etc/monika/recipes/`
+4. Suggest one or two recipes conversationally. Name the recipe, then mention what they already have and what they'd need to pick up, in flowing prose ("You could do a pasta marinara — you've got the pasta, tomatoes, and olive oil, you'd just need garlic."). Avoid checkmark symbols, bulleted ingredient lists, or any output that reads awkwardly aloud unless the user explicitly asks for a structured breakdown.
+5. If local recipes aren't available, use web_search to find recipes matching available ingredients.
+6. Ask if they'd like to save any recipes to `/etc/monika/recipes/`.
 
 ## Smart grocery lists
 
@@ -95,9 +92,9 @@ When the user says "Log that meal" or "I made X today":
 
 When the user asks to see "recent meals" or "meals I've made":
 
-1. Read `meal_history.csv`
-2. Display in reverse chronological order
-3. Optionally show statistics: most common meals, favorite ingredients, frequency of cooking
+1. Read `meal_history.csv`.
+2. Narrate recent meals conversationally, newest first ("You made pasta marinara yesterday, grilled chicken the day before, and stir-fry on Sunday."). For longer history, summarize trends rather than reciting every entry — favorite meals, common ingredients, how often they're cooking.
+3. Only switch to a list or full table if the user explicitly asks for full detail.
 
 ### Using history for decisions
 

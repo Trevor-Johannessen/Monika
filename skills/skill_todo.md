@@ -28,8 +28,8 @@ All to-do items are stored in `/etc/monika/todos`. Create this directory if it d
 
 1. When the user asks to see their to-do list, read all files in `/etc/monika/todos`.
 2. Extract the subject line from each file (the text after "Subject:").
-3. Display only the subject lines in a simple list format, one per line.
-4. Do not display file paths, creation dates, or additional details.
+3. Read the items back conversationally — the response is often spoken aloud. For a short list, weave items into a sentence ("You've got two things on your list: pick up groceries and call your mom."). For a longer list, use natural connectives ("First up is X, then Y, and there's also Z."). Avoid bulleted output unless the user explicitly asks for a list.
+4. Do not mention file paths, creation dates, or additional details.
 
 ## Edge cases
 
