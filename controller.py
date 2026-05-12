@@ -2,6 +2,7 @@
     The controller is responseible for setting up all required agents and giving an interface for them to be used.
 """
 
+import os
 import requests
 from datetime import datetime
 from context import Context
@@ -13,6 +14,8 @@ from modules.scheduleTask import ScheduleTaskAgent
 from modules.claudeCode import ClaudeCodeAgent
 from modules.steam import SteamAgent
 #from modules.minecraft import MinecraftAgent
+
+REMINDERS_DIR = "/etc/monika/reminders"
 
 
 VOICE_INSTRUCTION = (
@@ -55,12 +58,35 @@ class Controller():
             if self.settings['verbose']:
                 print(f"Could not update {endpoint}")
 
+    def _load_pending_reminders(self) -> str:
+        if not os.path.isdir(REMINDERS_DIR):
+            return ""
+        blocks = []
+        for name in sorted(os.listdir(REMINDERS_DIR)):
+            path = os.path.join(REMINDERS_DIR, name)
+            if not os.path.isfile(path):
+                continue
+            try:
+                with open(path, "r") as f:
+                    body = f.read().strip()
+            except OSError:
+                continue
+            blocks.append(f"File: {name}\n{body}")
+        return "\n\n".join(blocks)
+
     async def prompt(self, prompt: Prompt) -> str:
         # Add default attributes
         prompt.attributes['time'] = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S") if 'time' not in prompt.attributes else prompt.attributes['time']
 
         # Add prompt to context
         text = f"{prompt.prompt}\n\nBelow is information that may help with the above prompt. Only use relevant information:\n{prompt.attributes}"
+        reminders_text = self._load_pending_reminders()
+        if reminders_text:
+            text += (
+                "\n\nPending reminders (evaluate each Trigger against the current time and the user's message; "
+                "if fired, surface the message to the user and delete the file; otherwise ignore silently):\n"
+                + reminders_text
+            )
         self.history.clean()
         self.history.add(text)
 
