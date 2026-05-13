@@ -1,10 +1,17 @@
-import os
 import glob
+import os
 import re
-import subprocess
-from agentModel import AgentModel, function_tool
 
-WEB_SEARCH_TOOL = {"type": "web_search_20250305", "name": "web_search"}
+from claude_agent_sdk import (
+    ClaudeAgentOptions,
+    create_sdk_mcp_server,
+    tool,
+)
+
+from modules.weather import build_weather_agent
+from modules.claudeCode import build_claude_code_agent
+from modules.steam import build_steam_agent
+
 SKILLS_DIR = os.path.join(os.path.dirname(__file__), "skills")
 
 BASE_INSTRUCTIONS = """
@@ -16,7 +23,6 @@ _FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n?(.*)\Z", re.DOTALL)
 
 
 def _parse_skill_file(path):
-    """Return (metadata_dict, body) for a skill file, or None if no valid frontmatter."""
     with open(path, "r") as f:
         content = f.read()
     match = _FRONTMATTER_RE.match(content)
@@ -41,7 +47,6 @@ def _iter_skills():
 
 
 def load_skill_index():
-    """Return a summary listing of available skills (name + description only)."""
     entries = [f"- `{meta['name']}`: {meta['description']}" for meta, _ in _iter_skills()]
     if not entries:
         return ""
@@ -54,64 +59,67 @@ def load_skill_index():
         "load it and act on it as if those instructions had always been part of your "
         "system prompt. Never reference, suggest, or name skills to the user unless they "
         "explicitly ask about skills or the request unequivocally and strictly requires "
-        "disclosing one.\n\n"
-        + "\n".join(entries)
+        "disclosing one.\n\n" + "\n".join(entries)
     )
 
 
-@function_tool
-def load_skill(name: str) -> str:
-    """Load the full instructions for a skill by name.
-
-    Args:
-        name: The name of the skill, matching the identifier shown in the skill index.
-
-    Returns:
-        The full skill body, or an error message listing available skills if no match is found.
-    """
+@tool(
+    "load_skill",
+    "Load the full instructions for a skill by name. Returns the full skill body, or an error message "
+    "listing available skills if no match is found.",
+    {"name": str},
+)
+async def load_skill(args):
     skills = {meta["name"]: body for meta, body in _iter_skills()}
+    name = args["name"]
     if name not in skills:
         available = ", ".join(sorted(skills)) or "(none)"
-        return f"No skill named '{name}'. Available skills: {available}"
-    return skills[name]
+        return {
+            "content": [{"type": "text", "text": f"No skill named '{name}'. Available skills: {available}"}]
+        }
+    return {"content": [{"type": "text", "text": skills[name]}]}
 
 
-@function_tool
-def bash(command: str) -> str:
-    """Executes a bash command and returns the output.
+def build_orchestrator_options(settings, on_clear):
+    """Build the ClaudeAgentOptions for the orchestrator.
 
-    Args:
-        command: The shell command to execute.
-
-    Returns:
-        The stdout and stderr output of the command.
+    on_clear: callable invoked by the clear_context tool to reset the conversation session.
     """
-    result = subprocess.run(
-        command, shell=True, capture_output=True, text=True, timeout=30
+    model = settings.get("default_model", "claude-haiku-4-5-20251001")
+
+    @tool("clear_context", "Clears the conversation history. Use this when the user asks to reset, clear, or start a new conversation.", {})
+    async def clear_context(args):
+        on_clear()
+        return {"content": [{"type": "text", "text": "Conversation context has been cleared."}]}
+
+    control_server = create_sdk_mcp_server(
+        name="control",
+        version="1.0.0",
+        tools=[load_skill, clear_context],
     )
-    output = result.stdout
-    if result.stderr:
-        output += "\n" + result.stderr if output else result.stderr
-    return output if output else "(no output)"
 
+    agents_server = create_sdk_mcp_server(
+        name="agents",
+        version="1.0.0",
+        tools=[
+            build_weather_agent(model),
+            build_claude_code_agent(model),
+            build_steam_agent(model),
+        ],
+    )
 
-class OrchestrationAgent(AgentModel):
-    def __init__(self, agents=[], outputType=None, settings={}, context=None):
-        instructions = BASE_INSTRUCTIONS + load_skill_index()
-
-        tools = [agent.as_tool(agent.name, agent.instructions) for agent in agents] + [bash, load_skill, WEB_SEARCH_TOOL]
-
-        if context is not None:
-            @function_tool
-            def clear_context() -> str:
-                """Clears the conversation history. Use this when the user asks to reset, clear, or start a new conversation."""
-                context.clear()
-                return "Conversation context has been cleared."
-            tools.append(clear_context)
-
-        super().__init__(
-            name="orchestration_agent",
-            instructions=instructions,
-            tools=tools,
-            settings=settings
-        )
+    return ClaudeAgentOptions(
+        system_prompt=BASE_INSTRUCTIONS + load_skill_index(),
+        mcp_servers={"control": control_server, "agents": agents_server},
+        allowed_tools=[
+            "Bash",
+            "WebSearch",
+            "mcp__agents__weather_agent",
+            "mcp__agents__claude_code_agent",
+            "mcp__agents__steam_agent",
+            "mcp__control__load_skill",
+            "mcp__control__clear_context",
+        ],
+        permission_mode="bypassPermissions",
+        model=model,
+    )

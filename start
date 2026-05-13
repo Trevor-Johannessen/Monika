@@ -5,4 +5,5 @@ PORT=$(jq -r '.port // empty' settings.json 2>/dev/null)
 if [ -z "$PORT" ]; then
     PORT=$(jq -r '.port' defaults.json)
 fi
+export PATH="$HOME/.local/bin:$PATH"
 ./venv/bin/uvicorn server:app --port "$PORT" --host 0.0.0.0

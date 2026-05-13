@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is Monika
 
-Monika is a personal AI home assistant backed by Claude (Anthropic API). It exposes a FastAPI server that accepts prompts (text or audio-return) and routes them through an orchestration agent that delegates to specialized sub-agents (memory, weather, Spotify). It supports TTS output via OpenAI or ElevenLabs.
+Monika is a personal AI home assistant backed by Claude via the **Claude Agent SDK** (`claude-agent-sdk`). It exposes a FastAPI server that accepts prompts (text or audio-return) and routes them through an orchestration agent that delegates to specialized sub-agents (memory, weather, Steam, etc.). It supports TTS output via OpenAI or ElevenLabs.
+
+The SDK shells out to the `claude` CLI binary — that must be on `PATH` at runtime. The dev entrypoint inherits the user's shell PATH; the production `start` script prepends `~/.local/bin` so a per-user `claude` install works under systemd.
 
 ## Running
 
@@ -28,18 +30,18 @@ Settings are merged at startup: `{**defaults, **settings}`. Key settings: `defau
 
 ## Architecture
 
-**Request flow:** HTTP POST `/prompt` → `server.py` → `Controller.prompt()` → `OrchestrationAgent.run()` → Claude API with tool-use loop
+**Request flow:** HTTP POST `/prompt` → `server.py` → `Controller.prompt()` → `claude_agent_sdk.query()` with the orchestrator's `ClaudeAgentOptions`. Conversation continuity is provided by the SDK's session resumption: the controller stores `session_id` from each `ResultMessage` and passes it back via `resume=...` on the next request. After 15 minutes of inactivity the session is dropped.
 
 **Core files:**
-- `agentModel.py` — Base `AgentModel` class wrapping the Anthropic API. Handles tool-use loops, the `@function_tool` decorator (auto-generates tool schemas from Google-style docstrings + type hints), and agent-as-tool delegation via `as_tool()`.
-- `orchestrationAgent.py` — Top-level agent. Composes sub-agents as tools, includes a `bash` tool and web search. Loads skill prompts from `skills/*.md` into its system instructions.
-- `controller.py` — Wires up all sub-agents, manages conversation `Context`, and dispatches webhooks.
-- `context.py` — Conversation history with 15-minute inactivity auto-clear.
+- `orchestrationAgent.py` — Builds the orchestrator's `ClaudeAgentOptions` (system prompt + MCP servers + allowed tools). Exposes `load_skill` and `clear_context` as in-process MCP tools. The orchestrator can use the SDK's built-in `Bash` and `WebSearch` tools plus the delegation tools from each sub-agent.
+- `controller.py` — Holds `session_id`, the 15-minute inactivity clock, a parallel display-history list for webhooks, and wraps each `query()` call. Builds the orchestrator options once at startup.
 
-**Sub-agents (modules/):**
-- `memoryAgent.py` — ChromaDB vector store for long-term memory (OpenAI embeddings, persisted at `/var/lib/monika/memory.d`). Tags stored in `/etc/monika/tags.json`.
+**Sub-agents (modules/):** each module owns one MCP server (its tools) and one "delegation tool" exposed to the orchestrator. The delegation tool's handler runs `query()` internally with that sub-agent's system prompt, MCP server, and `tools=[]` (to strip built-ins from the sub-agent's context).
+- `memoryAgent.py` — ChromaDB vector store for long-term memory (OpenAI embeddings, persisted at `/var/lib/monika/memory.d`). Tags stored in `/etc/monika/tags.json`. *(currently disabled in `controller.py`)*
 - `weather.py` — AccuWeather API (location search → hourly/daily forecasts).
-- `spotify.py` — Spotify playback control via spotipy. Uses `ModelSettings(tool_choice="required")` to force tool use on first turn.
+- `steam.py` — Steam Web API (friends in TF2, server population).
+- `claudeCode.py` — Launches background `claude` CLI workers (only when explicitly requested).
+- `scheduleTask.py` / `minecraft.py` — disabled but kept for parity.
 
 **Skills (`skills/*.md`):** Markdown files loaded into the orchestration agent's system prompt. They define behaviors like recipe management. Add new skills by creating a `.md` file in `skills/`.
 
@@ -49,13 +51,17 @@ Settings are merged at startup: `{**defaults, **settings}`. Key settings: `defau
 
 ## Adding a new sub-agent
 
-1. Create a module in `modules/` that subclasses `AgentModel`.
-2. Define tool functions with `@function_tool` (use Google-style docstrings for arg descriptions).
-3. Register it in `controller.py` by appending to `agent_list`.
+1. Create a module in `modules/` that:
+   - Defines tools with `@tool("name", "description", {"arg": type})` from `claude_agent_sdk`. Use a full JSON Schema dict in place of the type-dict when you need enums or nested objects.
+   - Wraps the tools in an MCP server via `create_sdk_mcp_server(name=..., tools=[...])`.
+   - Exports a `build_<name>_agent(model: str)` factory that returns a `@tool`-decorated delegation function. The handler runs `query()` internally with the sub-agent's `system_prompt`, that MCP server, `allowed_tools=["mcp__<server>__<tool>", ...]`, and `tools=[]` to strip built-ins.
+2. Register the factory in `orchestrationAgent.build_orchestrator_options` (add it to the `agents_server` tools list and to the orchestrator's `allowed_tools`).
 
 ## Key patterns
 
-- Tools are plain Python functions decorated with `@function_tool`. The decorator introspects type hints and docstrings to generate Anthropic tool schemas automatically.
-- Sub-agents are exposed to the orchestrator as tools via `agent.as_tool(name, description)` — the orchestrator calls them by passing a `request` string.
-- Server-side tools (like `web_search`) are passed as raw dicts in the tools list.
+- Tools are async functions decorated with `@tool` from `claude_agent_sdk`. They must return `{"content": [{"type": "text", "text": ...}], ...}` dicts; set `"is_error": True` to surface failures without breaking the agent loop.
+- Sub-agents are exposed to the orchestrator as MCP tools that internally run `query()`. The naming convention is `mcp__<server_name>__<tool_name>`.
+- The orchestrator uses the SDK's built-in `Bash` and `WebSearch`. Sub-agents disable built-ins via `tools=[]` so they only see their own MCP tools.
+- `clear_context` is an MCP tool with a closure over the `Controller`. Calling it nulls the controller's `session_id`, which starts a fresh SDK session on the next prompt.
+- `permission_mode="bypassPermissions"` is set everywhere — this is a headless server with no human approval loop.
 - The `make commit` target nulls sensitive values in `settings.json` before committing, then restores the file.

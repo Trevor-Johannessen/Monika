@@ -1,61 +1,98 @@
 import os
 from datetime import datetime
-from agentModel import AgentModel, ModelSettings, function_tool
 
-class ScheduleTaskAgent(AgentModel):
-    def __init__(self, settings={}):
-        super().__init__(
-            name="schedule_agent",
-            instructions="You are apart of a larger chatbot. You handle running tasks in the future. If you are told to run something in some time relative to now, get the current time first.",
-            tools=[scheduleTask, listTask, removeTask, getDatetime],
-            model_settings=ModelSettings(tool_choice="required"),
-            settings=settings
-        )
-        self.handoff_description = "This should be called when action needs to be taken in the future. This agent is also able to remove scheduled prompts and list which prompts have already been scheduled."
-    
-@function_tool
-def getDatetime() -> str:
-    """Gets the current date and time"""
-    return datetime.now().strftime("%Y-%m-%d %H:%M")
+from claude_agent_sdk import (
+    ClaudeAgentOptions,
+    ResultMessage,
+    create_sdk_mcp_server,
+    query,
+    tool,
+)
 
-@function_tool
-def scheduleTask(time: str, task: str):
-    """Schedules a task at a given date and time.
-    
-    Args:
-        time: The date and time for the task to be executed using 'HH:MM AM/PM YYYY-MM-DD' syntax. This time will be passed into the 'at' linux command.
-        task: A prompt describing what should be executed at the given time. This task will be fed into the AI and interpreted at time of execution.
-    """
+SCHEDULE_AGENT_INSTRUCTIONS = (
+    "You are apart of a larger chatbot. You handle running tasks in the future. If you are told to run "
+    "something in some time relative to now, get the current time first. You MUST call a tool before "
+    "answering — never respond from your own knowledge."
+)
+
+
+@tool("getDatetime", "Gets the current date and time.", {})
+async def get_datetime(args):
+    return {"content": [{"type": "text", "text": datetime.now().strftime("%Y-%m-%d %H:%M")}]}
+
+
+@tool(
+    "scheduleTask",
+    "Schedules a task at a given date and time.",
+    {"time": str, "task": str},
+)
+async def schedule_task(args):
+    task = args["task"].replace('"', "").replace("'", "")
     try:
-        # Remove quotes bc they're is enough escapes below and I don't want to do it anymore. 
-        task = task.replace("\"","")
-        task = task.replace("'","")
-        data = os.system(f"""echo \"curl -X POST http://localhost:3333/prompt -H \\"Content-Type: application/json\\" -d \'{{\\"return_type\\": \\"text\\", \\"prompt\\": \\"{task}\\"}}'\" | at {time}""")
+        rc = os.system(
+            f"""echo \"curl -X POST http://localhost:3333/prompt -H \\"Content-Type: application/json\\" -d \'{{\\"return_type\\": \\"text\\", \\"prompt\\": \\"{task}\\"}}'\" | at {args['time']}"""
+        )
     except Exception as e:
-        print(e)
-    if data == 0:
-        return "Success!"
-    return "Could not schedule task."
+        return {"content": [{"type": "text", "text": str(e)}], "is_error": True}
+    if rc == 0:
+        return {"content": [{"type": "text", "text": "Success!"}]}
+    return {"content": [{"type": "text", "text": "Could not schedule task."}], "is_error": True}
 
-@function_tool
-def listTask() -> str:
-    """Lists all currently queued one off tasks"""
-    data = os.system("atq")
-    return data.stdout
 
-@function_tool
-def removeTask(job_number: int):
-    """Removes a job based off it's job number.
+@tool("listTask", "Lists all currently queued one off tasks.", {})
+async def list_task(args):
+    import subprocess
 
-    Args:
-        job_number: The id associated with the job to delete.
-    """
-    data = os.system(f"atrm {job_number}")
-    if data.returncode == 0:
-        return "Success!"
-    return "Could not schedule task." 
+    result = subprocess.run(["atq"], capture_output=True, text=True)
+    return {"content": [{"type": "text", "text": result.stdout or "(no jobs queued)"}]}
 
-@function_tool    
-def scheduleReoccuring(minute: str, hour: str, day_of_month: str, month: str, day_of_week: str, task: str):
-    pass
 
+@tool(
+    "removeTask",
+    "Removes a scheduled job by its job number.",
+    {"job_number": int},
+)
+async def remove_task(args):
+    rc = os.system(f"atrm {args['job_number']}")
+    if rc == 0:
+        return {"content": [{"type": "text", "text": "Success!"}]}
+    return {"content": [{"type": "text", "text": "Could not remove task."}], "is_error": True}
+
+
+schedule_tools_server = create_sdk_mcp_server(
+    name="schedule_tools",
+    version="1.0.0",
+    tools=[get_datetime, schedule_task, list_task, remove_task],
+)
+
+
+def build_schedule_agent(model: str):
+    @tool(
+        "schedule_agent",
+        "Routes scheduling requests (run X at time Y, list jobs, remove jobs) to a specialized agent. "
+        "Pass the user's request as 'request'.",
+        {"request": str},
+    )
+    async def schedule_agent(args):
+        text = ""
+        async for msg in query(
+            prompt=args["request"],
+            options=ClaudeAgentOptions(
+                system_prompt=SCHEDULE_AGENT_INSTRUCTIONS,
+                mcp_servers={"schedule_tools": schedule_tools_server},
+                allowed_tools=[
+                    "mcp__schedule_tools__getDatetime",
+                    "mcp__schedule_tools__scheduleTask",
+                    "mcp__schedule_tools__listTask",
+                    "mcp__schedule_tools__removeTask",
+                ],
+                tools=[],
+                permission_mode="bypassPermissions",
+                model=model,
+            ),
+        ):
+            if isinstance(msg, ResultMessage) and msg.subtype == "success":
+                text = msg.result
+        return {"content": [{"type": "text", "text": text}]}
+
+    return schedule_agent

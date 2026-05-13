@@ -1,10 +1,26 @@
+import json
 import re
+
 from mcrcon import MCRcon
-from agentModel import AgentModel, function_tool
+
+from claude_agent_sdk import (
+    ClaudeAgentOptions,
+    ResultMessage,
+    create_sdk_mcp_server,
+    query,
+    tool,
+)
 
 RCON_HOST = "localhost"
 RCON_PORT = 25575
 RCON_PASSWORD = ""
+
+MINECRAFT_AGENT_INSTRUCTIONS = (
+    "You are a Minecraft server assistant for a home assistant chatbot. "
+    "Use the provided tools to answer questions about the server. "
+    "Answer only in plaintext, no Markdown or special characters. "
+    "Be concise. If no players are online, say so."
+)
 
 
 def _rcon(command: str) -> str:
@@ -12,35 +28,8 @@ def _rcon(command: str) -> str:
         return rcon.command(command)
 
 
-class MinecraftAgent(AgentModel):
-    def __init__(self, settings={}):
-        global RCON_HOST, RCON_PORT, RCON_PASSWORD
-        RCON_HOST = settings.get("minecraft_rcon_host", RCON_HOST)
-        RCON_PORT = settings.get("minecraft_rcon_port", RCON_PORT)
-        RCON_PASSWORD = settings.get("minecraft_rcon_password", RCON_PASSWORD)
-        super().__init__(
-            name="minecraft_agent",
-            instructions=(
-                "You are a Minecraft server assistant for a home assistant chatbot. "
-                "Use the provided tools to answer questions about the server. "
-                "Answer only in plaintext, no Markdown or special characters. "
-                "Be concise. If no players are online, say so."
-            ),
-            tools=[
-                getOnlinePlayers,
-                getPlayerPositions,
-                getPlayerHealth,
-                getServerTps,
-            ],
-            settings=settings,
-        )
-
-
-@function_tool
-def getOnlinePlayers() -> dict:
-    """Gets the list of currently online players and the total count."""
+def _parse_online_players() -> dict:
     response = _rcon("/list")
-    # Response format: "There are X of a max of Y players online: name1, name2"
     match = re.search(r"(\d+) of a max of \d+ players online:(.*)", response)
     if not match:
         return {"count": 0, "players": []}
@@ -50,23 +39,30 @@ def getOnlinePlayers() -> dict:
     return {"count": count, "players": players}
 
 
-@function_tool
-def getPlayerPositions() -> dict:
-    """Gets the current position (x, y, z) and dimension of all online players.
+@tool("getOnlinePlayers", "Gets the list of currently online players and the total count.", {})
+async def get_online_players(args):
+    return {"content": [{"type": "text", "text": json.dumps(_parse_online_players())}]}
 
-    Returns a dict mapping each player name to their position and dimension.
-    """
-    online = getOnlinePlayers()
+
+@tool(
+    "getPlayerPositions",
+    "Gets the current position (x, y, z) and dimension of all online players. Returns a dict mapping "
+    "each player name to their position and dimension.",
+    {},
+)
+async def get_player_positions(args):
+    online = _parse_online_players()
     if online["count"] == 0:
-        return {}
+        return {"content": [{"type": "text", "text": json.dumps({})}]}
 
     result = {}
     for player in online["players"]:
         pos_resp = _rcon(f"/data get entity {player} Pos")
         dim_resp = _rcon(f"/data get entity {player} Dimension")
 
-        # Pos response: "... has the following entity data: [Xd, Yd, Zd]"
-        pos_match = re.search(r"\[([+-]?\d+\.?\d*)d?, ([+-]?\d+\.?\d*)d?, ([+-]?\d+\.?\d*)d?\]", pos_resp)
+        pos_match = re.search(
+            r"\[([+-]?\d+\.?\d*)d?, ([+-]?\d+\.?\d*)d?, ([+-]?\d+\.?\d*)d?\]", pos_resp
+        )
         dim_match = re.search(r'"(minecraft:[^"]+)"', dim_resp)
 
         result[player] = {
@@ -75,18 +71,19 @@ def getPlayerPositions() -> dict:
             "z": float(pos_match.group(3)) if pos_match else None,
             "dimension": dim_match.group(1) if dim_match else None,
         }
-    return result
+    return {"content": [{"type": "text", "text": json.dumps(result)}]}
 
 
-@function_tool
-def getPlayerHealth() -> dict:
-    """Gets the current health and food level of all online players.
-
-    Returns a dict mapping each player name to their health (max 20) and food level (max 20).
-    """
-    online = getOnlinePlayers()
+@tool(
+    "getPlayerHealth",
+    "Gets the current health and food level of all online players. Returns a dict mapping each player "
+    "name to their health (max 20) and food level (max 20).",
+    {},
+)
+async def get_player_health(args):
+    online = _parse_online_players()
     if online["count"] == 0:
-        return {}
+        return {"content": [{"type": "text", "text": json.dumps({})}]}
 
     result = {}
     for player in online["players"]:
@@ -100,10 +97,58 @@ def getPlayerHealth() -> dict:
             "health": float(health_match.group(1)) if health_match else None,
             "food": int(food_match.group(1)) if food_match else None,
         }
-    return result
+    return {"content": [{"type": "text", "text": json.dumps(result)}]}
 
 
-@function_tool
-def getServerTps() -> str:
-    """Gets the current TPS (ticks per second) of the server. 20 TPS is ideal. Paper servers only."""
-    return _rcon("/tps")
+@tool(
+    "getServerTps",
+    "Gets the current TPS (ticks per second) of the server. 20 TPS is ideal. Paper servers only.",
+    {},
+)
+async def get_server_tps(args):
+    return {"content": [{"type": "text", "text": _rcon("/tps")}]}
+
+
+minecraft_tools_server = create_sdk_mcp_server(
+    name="minecraft_tools",
+    version="1.0.0",
+    tools=[get_online_players, get_player_positions, get_player_health, get_server_tps],
+)
+
+
+def build_minecraft_agent(model: str, settings: dict | None = None):
+    global RCON_HOST, RCON_PORT, RCON_PASSWORD
+    if settings:
+        RCON_HOST = settings.get("minecraft_rcon_host", RCON_HOST)
+        RCON_PORT = settings.get("minecraft_rcon_port", RCON_PORT)
+        RCON_PASSWORD = settings.get("minecraft_rcon_password", RCON_PASSWORD)
+
+    @tool(
+        "minecraft_agent",
+        "Routes Minecraft server questions (online players, positions, health, TPS) to a specialized "
+        "agent. Pass the user's request as 'request'.",
+        {"request": str},
+    )
+    async def minecraft_agent(args):
+        text = ""
+        async for msg in query(
+            prompt=args["request"],
+            options=ClaudeAgentOptions(
+                system_prompt=MINECRAFT_AGENT_INSTRUCTIONS,
+                mcp_servers={"minecraft_tools": minecraft_tools_server},
+                allowed_tools=[
+                    "mcp__minecraft_tools__getOnlinePlayers",
+                    "mcp__minecraft_tools__getPlayerPositions",
+                    "mcp__minecraft_tools__getPlayerHealth",
+                    "mcp__minecraft_tools__getServerTps",
+                ],
+                tools=[],
+                permission_mode="bypassPermissions",
+                model=model,
+            ),
+        ):
+            if isinstance(msg, ResultMessage) and msg.subtype == "success":
+                text = msg.result
+        return {"content": [{"type": "text", "text": text}]}
+
+    return minecraft_agent
