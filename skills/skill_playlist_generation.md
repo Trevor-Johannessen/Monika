@@ -1,11 +1,11 @@
 ---
-name: spotify-playlist-generation
-description: Generate a mood-aware playlist or song recommendations from the user's Spotify listening profile when they ask for "a playlist", "something to listen to", "recommend songs", or describe a vibe they want music for. Use the spotify skill for any actual playback or queueing.
+name: spotify-queue-songs
+description: Pick mood-aware songs from the user's Spotify listening profile and add them to their Spotify queue when they ask for "something to listen to", "queue up some songs", "put on something chill", or describe a vibe they want music for. Uses the spotify skill to actually queue and play the tracks.
 ---
 
-# Playlist Generation
+# Queue Songs
 
-When the user asks for a playlist or song recommendations — explicitly ("make me a playlist") or implicitly ("I want something chill", "put on something to work to") — read their listening profile and generate a mood-aware pick list. Hand the tracks off to the spotify skill if they want them played or queued.
+When the user asks for songs to listen to — explicitly ("queue up some music", "add some songs to my queue") or implicitly ("I want something chill", "put on something to work to") — read their listening profile, pick mood-aware tracks, and add them to their Spotify queue via the spotify skill.
 
 ## Where the data lives
 
@@ -19,7 +19,7 @@ All files are under `scripts/spotify/` (relative to the current working director
 
 For most requests, `SPOTIFY_CONTEXT.md` alone is enough.
 
-## How to build the playlist
+## How to pick the songs
 
 1. Match the user's current mood to the closest archetype. If they named a vibe ("chill", "upbeat", "nostalgic"), pick the archetype whose representative artists fit. Otherwise use the "Current Mood Match" line in `SPOTIFY_CONTEXT.md`.
 2. Use that archetype's anchor tracks as the core (5–7 tracks).
@@ -31,12 +31,13 @@ For most requests, `SPOTIFY_CONTEXT.md` alone is enough.
 
 ## What to do with the picks
 
-- If the user wants the music played or queued ("put something on", "play me a playlist"), call the spotify skill's queue endpoint for each track URI, then start playback on the first one.
-- If the user just wants suggestions ("what should I listen to", "recommend some songs"), tell them the picks conversationally and stop there.
+Queue the tracks via the spotify skill: call the queue endpoint for each track URI in order. If nothing is currently playing, start playback on the first track and queue the rest behind it. If music is already playing, just add them all to the queue so they come up after the current song.
+
+If the user explicitly only wants suggestions ("what should I listen to", "recommend some songs without queueing"), tell them the picks conversationally and skip the queue step.
 
 ## Response style
 
-Reply in short, natural sentences suitable for TTS. No markdown lists, no Spotify URIs read aloud, no archetype labels like "archetype_4" — translate them into plain descriptions of the vibe ("a Sara Bareilles-leaning singer-songwriter set", "a 2000s pop-punk run"). Mention 2–3 of the picks by name and artist; do not recite the whole list aloud. If you queued the tracks, just confirm briefly.
+Reply in short, natural sentences suitable for TTS. No markdown lists, no Spotify URIs read aloud, no archetype labels like "archetype_4" — translate them into plain descriptions of the vibe ("a Sara Bareilles-leaning singer-songwriter set", "a 2000s pop-punk run"). Mention 2–3 of the queued songs by name and artist; do not recite the whole list aloud. A brief confirmation like "Queued up a chill singer-songwriter run — starting with Gravity by Sara Bareilles" is ideal.
 
 ## Keeping the profile fresh
 
