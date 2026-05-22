@@ -11,6 +11,7 @@ from claude_agent_sdk import (
 from modules.weather import build_weather_agent
 from modules.claudeCode import build_claude_code_agent
 from modules.steam import build_steam_agent
+from modules.calendar import build_calendar_agent
 
 SKILLS_DIR = os.path.join(os.path.dirname(__file__), "skills")
 
@@ -105,6 +106,7 @@ def build_orchestrator_options(settings, on_clear):
             build_weather_agent(model),
             build_claude_code_agent(model),
             build_steam_agent(model),
+            build_calendar_agent(model),
         ],
     )
 
@@ -117,6 +119,7 @@ def build_orchestrator_options(settings, on_clear):
             "mcp__agents__weather_agent",
             "mcp__agents__claude_code_agent",
             "mcp__agents__steam_agent",
+            "mcp__agents__calendar_agent",
             "mcp__control__load_skill",
             "mcp__control__clear_context",
         ],

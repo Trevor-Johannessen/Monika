@@ -8,6 +8,7 @@ from io import BytesIO
 from voice import Voice as OpenAIVoice
 from voice_elevenlabs import Voice as ElevenLabsVoice
 from controller import Controller
+import dashboard
 import json
 
 
@@ -31,6 +32,7 @@ voice = Voice(
     speed = settings['voice_speed']
 )
 controller = Controller(settings)
+dashboard.register(app, voice_directory=settings.get('voice_directory'))
 
 @app.post("/prompt")
 async def prompt(data: Prompt):

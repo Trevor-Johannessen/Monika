@@ -40,6 +40,7 @@ Settings are merged at startup: `{**defaults, **settings}`. Key settings: `defau
 - `memoryAgent.py` — ChromaDB vector store for long-term memory (OpenAI embeddings, persisted at `/var/lib/monika/memory.d`). Tags stored in `/etc/monika/tags.json`. *(currently disabled in `controller.py`)*
 - `weather.py` — AccuWeather API (location search → hourly/daily forecasts).
 - `steam.py` — Steam Web API (friends in TF2, server population).
+- `calendar.py` — Apple iCloud calendar over CalDAV (`caldav` library). Reads/searches events and creates new ones; cannot edit or delete. Auth via `ICLOUD_APPLE_ID` + `ICLOUD_APP_PASSWORD` (an app-specific password) in `.env`; optional `MONIKA_TIMEZONE` and `MONIKA_DEFAULT_CALENDAR`.
 - `claudeCode.py` — Launches background `claude` CLI workers (only when explicitly requested).
 - `scheduleTask.py` / `minecraft.py` — disabled but kept for parity.
 
