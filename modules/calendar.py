@@ -17,9 +17,12 @@ from claude_agent_sdk import (
     tool,
 )
 
+from credentials import read_json
+
 CALDAV_URL = "https://caldav.icloud.com"
-APPLE_ID = os.getenv("ICLOUD_APPLE_ID")
-APP_PASSWORD = os.getenv("ICLOUD_APP_PASSWORD")
+_icloud = read_json("icloud.json")
+APPLE_ID = _icloud.get("ICLOUD_APPLE_ID")
+APP_PASSWORD = _icloud.get("ICLOUD_APP_PASSWORD")
 DEFAULT_CALENDAR = os.getenv("MONIKA_DEFAULT_CALENDAR", "")
 
 
@@ -203,7 +206,7 @@ def _error(text):
 
 def _creds_missing():
     if not APPLE_ID or not APP_PASSWORD:
-        return _error("ICLOUD_APPLE_ID or ICLOUD_APP_PASSWORD is not configured in .env.")
+        return _error("ICLOUD_APPLE_ID or ICLOUD_APP_PASSWORD is not configured in ~/.credentials/icloud.json.")
     return None
 
 

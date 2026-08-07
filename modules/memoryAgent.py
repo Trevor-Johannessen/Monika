@@ -17,11 +17,15 @@ from claude_agent_sdk import (
     tool,
 )
 
+from credentials import read_key
+
+_openai_key = read_key("openai.key")
+
 chroma_client = chromadb.PersistentClient(path="/var/lib/monika/memory.d")
-openai_client = OpenAI()
+openai_client = OpenAI(api_key=_openai_key)
 
 ef = embedding_functions.OpenAIEmbeddingFunction(
-    api_key_env_var="OPENAI_API_KEY",
+    api_key=_openai_key,
     model_name="text-embedding-3-small",
 )
 

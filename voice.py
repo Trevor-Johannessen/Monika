@@ -3,6 +3,8 @@ from datetime import datetime
 import shutil
 from openai import OpenAI
 
+from credentials import read_key
+
 class Voice():
 
     def __init__(
@@ -13,7 +15,7 @@ class Voice():
         speed=None,
         instructions="Speak in a neutral tone.",
     ):
-        self.client=OpenAI()
+        self.client=OpenAI(api_key=read_key("openai.key"))
         self.model=model
         self.voice=voice
         self.instructions=instructions

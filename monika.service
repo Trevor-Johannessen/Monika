@@ -3,6 +3,7 @@ Description=Just Monika.
 
 [Service]
 User=tjohannessen
+WorkingDirectory=~
 ExecStart=/usr/local/bin/monika/start
 
 [Install]

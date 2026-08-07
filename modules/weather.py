@@ -1,5 +1,4 @@
 import json
-import os
 import requests
 from claude_agent_sdk import (
     ClaudeAgentOptions,
@@ -9,7 +8,9 @@ from claude_agent_sdk import (
     tool,
 )
 
-api_key = os.getenv("ACCUWEATHER_API_KEY")
+from credentials import read_key
+
+api_key = read_key("accuweather.key")
 
 WEATHER_AGENT_INSTRUCTIONS = (
     "You are a meteorologist apart of a larger home assistant chatbot. Your job is to get weather about "

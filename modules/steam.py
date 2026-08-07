@@ -1,5 +1,4 @@
 import json
-import os
 import requests
 from claude_agent_sdk import (
     ClaudeAgentOptions,
@@ -9,8 +8,11 @@ from claude_agent_sdk import (
     tool,
 )
 
-API_KEY = os.getenv("STEAM_API_KEY")
-STEAM_ID = os.getenv("STEAM_ID")
+from credentials import read_json
+
+_steam = read_json("steam.json")
+API_KEY = _steam.get("api_key")
+STEAM_ID = _steam.get("profile_id")
 
 TF2_APPID = "440"
 POWERHOUSE_MAP = "cp_powerhouse"
@@ -42,7 +44,7 @@ STEAM_AGENT_INSTRUCTIONS = (
 async def get_tf2_friends_online(args):
     if not API_KEY or not STEAM_ID:
         return {
-            "content": [{"type": "text", "text": "STEAM_API_KEY or STEAM_ID not configured in .env."}],
+            "content": [{"type": "text", "text": "api_key or profile_id not configured in ~/.credentials/steam.json."}],
             "is_error": True,
         }
 
@@ -92,7 +94,7 @@ async def get_tf2_friends_online(args):
 async def get_powerhouse_player_count(args):
     if not API_KEY:
         return {
-            "content": [{"type": "text", "text": "STEAM_API_KEY not configured in .env."}],
+            "content": [{"type": "text", "text": "api_key not configured in ~/.credentials/steam.json."}],
             "is_error": True,
         }
 

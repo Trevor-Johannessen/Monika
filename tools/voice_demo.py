@@ -33,6 +33,7 @@ instructions=None
 output_dir=None
 help_messages = ["", "help"]
 
+#msg = input("Enter message. Type 'help' for help: ")
 while True:
     msg = input("Enter message. Type 'help' for help: ")
 
@@ -49,11 +50,13 @@ while True:
             print(f"{i}: {voices[i]}")
     else:
         audio_data = v.generate_voice(msg, voice=voices[voice_id], instructions=instructions, directory=output_dir)
+        #audio_data = v.generate_voice(msg, voice=voice, instructions=instructions, directory=output_dir)
+        #tmpfile = f"/mnt/fs1/media/audio/voice-lines/openai/{voice}-{msg}.mp3"
+        tmpfile = f"/mnt/fs1/media/audio/voice-lines/openai/{voices[voice_id]}-{msg[:30]}.mp3"
+        with open(tmpfile, "wb") as f:
+            f.write(audio_data)
         if args.playback_server:
             url = f"http://{args.playback_server}"
-            tmpfile = "/tmp/voice_playback.mp3"
-            with open(tmpfile, "wb") as f:
-                f.write(audio_data)
             with open(tmpfile, "rb") as f:
                 requests.post(url, files={"file": ("speech.mp3", f, "audio/mpeg")})
-            os.remove(tmpfile)
+        

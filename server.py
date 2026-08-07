@@ -1,8 +1,17 @@
 from dotenv import load_dotenv
 from fastapi.responses import StreamingResponse
-load_dotenv()
 from fastapi import FastAPI
 import os
+from credentials import read_key
+load_dotenv()
+
+# The Claude Agent SDK shells out to the `claude` CLI, which authenticates via the
+# ANTHROPIC_API_KEY environment variable (inherited by any subprocesses it spawns),
+# so this one key must live in the environment. Load it explicitly from the file.
+_anthropic_key = read_key("anthropic.key")
+if _anthropic_key:
+    os.environ["ANTHROPIC_API_KEY"] = _anthropic_key
+
 from prompt import Prompt
 from io import BytesIO
 from voice import Voice as OpenAIVoice
