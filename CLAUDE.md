@@ -31,6 +31,8 @@ Settings are merged at startup: `{**defaults, **settings}`. Key settings: `defau
 
 ## Architecture
 
+**Client attributes:** callers may pass an `attributes` dict on the prompt body; `Controller._build_prompt_text` appends it to the user prompt as context and the model decides what to do with it. There is no per-attribute handling in the controller. `"led": true` is the convention for "the room's LED strip is available this request" — the orchestrator's system prompt explains it and the `led-strip` skill does the driving.
+
 **Request flow:** HTTP POST `/prompt` → `server.py` → `Controller.prompt()` → `claude_agent_sdk.query()` with the orchestrator's `ClaudeAgentOptions`. Conversation continuity is provided by the SDK's session resumption: the controller stores `session_id` from each `ResultMessage` and passes it back via `resume=...` on the next request. After 15 minutes of inactivity the session is dropped.
 
 **Core files:**
@@ -45,7 +47,7 @@ Settings are merged at startup: `{**defaults, **settings}`. Key settings: `defau
 - `claudeCode.py` — Launches background `claude` CLI workers (only when explicitly requested).
 - `scheduleTask.py` / `minecraft.py` — disabled but kept for parity.
 
-**Skills (`~/.claude/skills/<name>/SKILL.md`):** Claude Code skills, auto-discovered by the `claude` CLI that the SDK shells out to (no longer loaded by Monika itself — the old `load_skill` MCP tool and in-repo `skills/` dir were removed). Each skill is a directory containing a `SKILL.md` with `name`/`description` frontmatter. They define behaviors like recipe management. Add a new skill by creating `~/.claude/skills/<name>/SKILL.md` (see the `create-skill` skill).
+**Skills (`~/.claude/skills/<name>/SKILL.md`):** Claude Code skills, discovered by the `claude` CLI that the SDK shells out to (no longer loaded by Monika itself — the old `load_skill` MCP tool and in-repo `skills/` dir were removed). The orchestrator opts in with `skills="all"` in `build_orchestrator_options`; that one option enables the `Skill` tool and points the CLI at the skills directory. Sub-agents pass `tools=[]`, so they have no `Skill` or `Bash` — anything a skill drives has to happen at the orchestrator level. Each skill is a directory containing a `SKILL.md` with `name`/`description` frontmatter. They define behaviors like recipe management. Add a new skill by creating `~/.claude/skills/<name>/SKILL.md` (see the `create-skill` skill).
 
 **Skill tone:** Monika is a conversational AI — output is often spoken aloud via TTS. When writing or editing skills, instruct the agent to respond in a natural, conversational tone. Avoid output formats that read poorly aloud (markdown tables, bulleted lists, headings, code blocks, parenthetical citations stacked together) unless the user explicitly asks for that format. Prefer flowing prose, short sentences, and natural connectives over structured layouts.
 
