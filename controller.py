@@ -2,18 +2,25 @@
     The controller is responseible for setting up all required agents and giving an interface for them to be used.
 """
 
+import json
 import os
 from dataclasses import replace
 from datetime import datetime
+from pathlib import Path
 
 import requests
 
+import conversations
 from claude_agent_sdk import ClaudeAgentOptions, ResultMessage, query
 from orchestrationAgent import build_orchestrator_options
 from prompt import Prompt
 
 REMINDERS_DIR = "/etc/monika/reminders"
 INACTIVITY_SECONDS = 900
+
+# Survives a restart so a redeploy mid-conversation doesn't drop the thread.
+# Lives on the NFS home mount next to the conversation log.
+STATE_PATH = Path.home() / ".monika" / "state.json"
 
 VOICE_INSTRUCTION = (
     "\n\nIMPORTANT: Respond using complete words only. Do not use any special characters "
@@ -32,10 +39,42 @@ class Controller:
         self.initial_prompt = settings.get("inital_prompt", "")
         self.webhooks = settings.get("webhooks", [])
         self._base_options: ClaudeAgentOptions = build_orchestrator_options(settings, self.clear_session)
+        self._restore_session()
+
+    def _restore_session(self):
+        """Pick the live session back up after a restart, if it is still fresh.
+
+        The SDK's session transcripts outlive the process, so the only thing
+        lost on restart is the session id. Anything older than the inactivity
+        window would have been dropped anyway; long-term recall is the `recall`
+        skill's job, not this one's.
+        """
+        try:
+            state = json.loads(STATE_PATH.read_text())
+            last = datetime.strptime(state["last_update"], "%Y-%m-%dT%H:%M:%S")
+        except (OSError, ValueError, KeyError, json.JSONDecodeError):
+            return
+        if (datetime.now() - last).total_seconds() > INACTIVITY_SECONDS:
+            return
+        self.session_id = state.get("session_id")
+        self.last_update = last
+        if self.settings.get("verbose") and self.session_id:
+            print(f"Resuming session {self.session_id} from {last}")
+
+    def _save_session(self):
+        try:
+            STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            STATE_PATH.write_text(json.dumps({
+                "session_id": self.session_id,
+                "last_update": self.last_update.strftime("%Y-%m-%dT%H:%M:%S"),
+            }))
+        except OSError:
+            pass
 
     def clear_session(self):
         self.session_id = None
         self.history = []
+        self._save_session()
 
     def _check_inactivity(self):
         if (datetime.now() - self.last_update).total_seconds() > INACTIVITY_SECONDS:
@@ -118,6 +157,12 @@ class Controller:
 
         self.last_update = datetime.now()
         self.history.append({"role": "assistant", "content": result})
+
+        # Long-term memory: the raw prompt, not the context-padded one the model
+        # saw. Searched later by the `recall` skill.
+        conversations.append(prompt.prompt, result, session=self.session_id,
+                             when=self.last_update)
+        self._save_session()
 
         if self.settings.get("verbose"):
             print(f"Response took {time_delta.total_seconds()} seconds.")
