@@ -40,7 +40,7 @@ voice = Voice(
     directory=settings['voice_directory'],
     speed = settings['voice_speed']
 )
-controller = Controller(settings)
+controller = Controller(settings, voice)
 dashboard.register(app, voice_directory=settings.get('voice_directory'))
 
 @app.post("/prompt")

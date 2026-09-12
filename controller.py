@@ -31,14 +31,19 @@ VOICE_INSTRUCTION = (
 
 class Controller:
 
-    def __init__(self, settings):
+    def __init__(self, settings, voice):
         self.settings = settings
         self.session_id: str | None = None
         self.last_update = datetime.now()
+        # Whether the reply to the turn in flight will be spoken. The say tool
+        # reads this so text-mode callers never make noise in the room.
+        self._spoken = False
         self.history: list[dict] = []  # display-only, for webhooks
         self.initial_prompt = settings.get("inital_prompt", "")
         self.webhooks = settings.get("webhooks", [])
-        self._base_options: ClaudeAgentOptions = build_orchestrator_options(settings, self.clear_session)
+        self._base_options: ClaudeAgentOptions = build_orchestrator_options(
+            settings, self.clear_session, voice, lambda: self._spoken
+        )
         self._restore_session()
 
     def _restore_session(self):
@@ -136,7 +141,8 @@ class Controller:
         self.update_webhook()
 
         send_text = base_text
-        if prompt.return_type == "audio":
+        self._spoken = prompt.return_type == "audio"
+        if self._spoken:
             send_text = base_text + VOICE_INSTRUCTION
 
         opts = self._base_options

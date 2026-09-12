@@ -1,5 +1,6 @@
 {
   "port": 3333,
+  "speaker_server": "http://pi1:3335",
   "voice_name": "nova",
   "voice_directory": "./",
   "webhooks": [],
