@@ -64,3 +64,20 @@ class Voice():
                 os._exit(0)
             return audio_data
 
+
+    def stream_pcm(self, text, previous_text=None, voice=None, model=None):
+        """Yield raw 24 kHz mono s16 PCM for one sentence, as it is generated.
+
+        `previous_text` is accepted for parity with the ElevenLabs backend;
+        this API has no equivalent, so it is ignored.
+        """
+        with self.client.audio.speech.with_streaming_response.create(
+            model=model or self.model,
+            voice=voice or self.voice,
+            input=text,
+            instructions=self.instructions,
+            speed=self.speed,
+            response_format="pcm",
+        ) as response:
+            for chunk in response.iter_bytes():
+                yield chunk

@@ -1,4 +1,4 @@
-EXCLUDE := .* _* venv/ *.service Makefile voice-history debug.py ./
+EXCLUDE := .* _* venv/ *.service Makefile voice-history debug.py claude ./
 EXCLUDE_FLAGS := $(foreach pattern,$(EXCLUDE),--exclude='$(pattern)')
 SERVICES := monika monika-https
 HTTPS_PORT := 3334
@@ -6,6 +6,12 @@ DEBUG_PORT := 3337
 
 # Shared venv on fs1 (NFS), reused by every machine instead of a per-host install.
 VENV := /mnt/fs1/shared/venvs/monika
+
+# The claude CLI is copied next to the service on local disk: the SDK's bundled
+# copy lives on the fs1 NFS mount and costs ~2.5 s to spawn when it is cold.
+# install runs under sudo, where ~ is root's home, so name the owning account.
+OWNER := tjohannessen
+CLI := $(shell getent passwd $(OWNER) | cut -d: -f6)/.local/bin/claude
 
 dryrun:
 	rsync -avn ${EXCLUDE_FLAGS} ./ \ /usr/local/bin/monika/
@@ -27,6 +33,9 @@ install: dryrun
 	cp $(SERVICES:%=%.service) /etc/systemd/system/
 	-systemctl stop $(SERVICES)
 	rsync -av ${EXCLUDE_FLAGS} ./ /usr/local/bin/monika/
+	@if [ -e $(CLI) ]; then cp -L $(CLI) /usr/local/bin/monika/claude && \
+		chmod +x /usr/local/bin/monika/claude; \
+	else echo "WARNING: $(CLI) missing; using the SDK's bundled CLI on NFS"; fi
 	cp -p .env /usr/local/bin/monika/
 	systemctl daemon-reload
 	systemctl enable --now $(SERVICES)

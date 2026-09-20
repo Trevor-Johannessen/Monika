@@ -6,3 +6,6 @@ __pycache__
 .cache
 settings.json
 .claude
+
+# Copied onto local disk by `make install`; never from the repo.
+/claude

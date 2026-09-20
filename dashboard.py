@@ -309,7 +309,7 @@ def _build_audio_matches(project_dir: Path, voice_dir: Path | None) -> dict[str,
 
     audio: list[tuple[float, str]] = []
     for p in voice_dir.iterdir():
-        if not p.is_file() or p.suffix.lower() != ".mp3":
+        if not p.is_file() or p.suffix.lower() not in (".mp3", ".wav"):
             continue
         epoch = _parse_audio_name(p.name)
         if epoch is not None:
@@ -518,7 +518,7 @@ function renderTurn(t, i) {
 
 # ── routes ────────────────────────────────────────────────────────────────
 
-_VALID_AUDIO_NAME = re.compile(r"^[\w\-. ]+\.mp3$")
+_VALID_AUDIO_NAME = re.compile(r"^[\w\-. ]+\.(mp3|wav)$")
 
 
 def register(app: FastAPI, voice_directory: str | None = None) -> None:
@@ -549,4 +549,5 @@ def register(app: FastAPI, voice_directory: str | None = None) -> None:
             raise HTTPException(400, "outside voice directory")
         if not path.is_file():
             raise HTTPException(404, "not found")
-        return FileResponse(path, media_type="audio/mpeg")
+        media = "audio/wav" if path.suffix.lower() == ".wav" else "audio/mpeg"
+        return FileResponse(path, media_type=media)

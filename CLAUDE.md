@@ -35,7 +35,7 @@ Settings are merged at startup: `{**defaults, **settings}`. Key settings: `defau
 
 **Client attributes:** callers may pass an `attributes` dict on the prompt body; `Controller._build_prompt_text` appends it to the user prompt as context and the model decides what to do with it. There is no per-attribute handling in the controller. `"led": true` is the convention for "the room's LED strip is available this request" — the orchestrator's system prompt explains it and the `led-strip` skill does the driving.
 
-**Request flow:** HTTP POST `/prompt` → `server.py` → `Controller.prompt()` → `claude_agent_sdk.query()` with the orchestrator's `ClaudeAgentOptions`. Short-term conversation continuity is provided by the SDK's session resumption: the controller stores `session_id` from each `ResultMessage` and passes it back via `resume=...` on the next request. After 15 minutes of inactivity the session is dropped. The `session_id` is also mirrored to `~/.monika/state.json`, so a restart or redeploy mid-conversation picks the same session back up (subject to the same 15-minute window) instead of dropping the thread.
+**Request flow:** HTTP POST `/prompt` → `server.py` → `Controller.prompt()` → one long-lived `ClaudeSDKClient`. The client is connected on the first prompt and kept, so a turn costs no CLI spawn; turns are serialized on an `asyncio.Lock` because they share the one session. Short-term conversation continuity is the SDK session itself: the controller stores `session_id` from each `ResultMessage`, and only a *reconnect* passes it back via `resume=...`. After 15 minutes of inactivity the client is dropped and the session with it. The `session_id` is also mirrored to `~/.monika/state.json`, so a restart or redeploy mid-conversation picks the same session back up (subject to the same 15-minute window) instead of dropping the thread.
 
 **Conversation memory:** Monika has two tiers of memory, and they are separate mechanisms.
 
@@ -51,7 +51,7 @@ Do not confuse this log with the `claude` CLI's own session transcripts in `~/.c
 
 **Core files:**
 - `orchestrationAgent.py` — Builds the orchestrator's `ClaudeAgentOptions` (system prompt + MCP servers + allowed tools). Exposes `clear_context` as an in-process MCP tool — now the only one. The orchestrator works from the SDK's built-in `Bash`, `WebSearch`, `Task` and `Skill` tools; there are no delegation sub-agents left.
-- `controller.py` — Holds `session_id`, the 15-minute inactivity clock, a parallel display-history list for webhooks, and wraps each `query()` call. Builds the orchestrator options once at startup. Persists the session to `~/.monika/state.json` and appends every exchange to the durable conversation log.
+- `controller.py` — Holds the live `ClaudeSDKClient`, `session_id`, the 15-minute inactivity clock, and a parallel display-history list for webhooks. Builds the orchestrator options once at startup. On a spoken turn it feeds text deltas from `StreamEvent` into a `SentenceSplitter` so the reply is spoken as it is written. Persists the session to `~/.monika/state.json` and appends every exchange to the durable conversation log.
 - `conversations.py` — The durable conversation log: `append()`, `read_all()`, `recent()`. Deliberately dumb — plain JSON lines that the `recall` skill greps.
 
 **Sub-agents (modules/):** *none are active.* The pattern was: each module owned one MCP server plus a "delegation tool" whose handler ran a nested `query()` with its own system prompt and `tools=[]`. Weather, Steam and calendar have all become skills, and `claudeCode.py` was replaced by the native `Task` tool. What survives in `modules/` is dormant:
@@ -70,7 +70,9 @@ The `agents` MCP server is gone entirely; `control` (holding `clear_context`) is
 
 **Skill tone:** Monika is a conversational AI — output is often spoken aloud via TTS. When writing or editing skills, instruct the agent to respond in a natural, conversational tone. Avoid output formats that read poorly aloud (markdown tables, bulleted lists, headings, code blocks, parenthetical citations stacked together) unless the user explicitly asks for that format. Prefer flowing prose, short sentences, and natural connectives over structured layouts.
 
-**Voice:** Two interchangeable TTS backends (`voice.py` for OpenAI, `voice_elevenlabs.py` for ElevenLabs), selected by `voice_provider` setting. Both save audio history to `voice_directory` via a forked child process.
+**Voice:** Two interchangeable TTS backends (`voice.py` for OpenAI, `voice_elevenlabs.py` for ElevenLabs), selected by `voice_provider` setting. Each has `generate_voice()`, which returns a whole MP3 and saves it to `voice_directory` via a forked child process, and `stream_pcm()`, which yields 24 kHz mono s16 PCM a sentence at a time.
+
+**Streaming speech (`speech.py`):** a `/prompt` with `return_type: "audio"` and `audio_format: "pcm"` returns a `StreamingResponse` of `audio/L16` that starts on the first sentence, while the model is still working; `ai-middleman` pipes it into the speaker server's `/stream` socket. `SentenceSplitter` cuts text deltas into sentences and strips an optional leading `[mood]` tag; `SpeechStream` synthesises them one at a time in order, puts the sprite up through `buddy`, and saves the turn to `voice_directory` as one WAV. The `say` tool joins the same stream when there is one. `audio_format: "mp3"` keeps the old whole-clip behaviour for the timer, scheduler and dashboard callers.
 
 ## Adding a new sub-agent
 

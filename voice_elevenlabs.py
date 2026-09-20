@@ -9,7 +9,7 @@ class Voice():
 
     def __init__(
         self,
-        model="eleven_multilingual_v2",
+        model="eleven_flash_v2_5",
         directory=None,
         voice="Rachel",
         speed=None,
@@ -65,3 +65,20 @@ class Voice():
                 shutil.move(filename_temp, filename)
                 os._exit(0)
             return audio_data
+
+    def stream_pcm(self, text, previous_text=None, voice=None, model=None):
+        """Yield raw 24 kHz mono s16 PCM for one sentence, as it is generated.
+
+        `previous_text` is the sentence before this one; ElevenLabs uses it to
+        keep prosody continuous across a reply that is synthesised piecemeal.
+        """
+        kwargs = {}
+        if previous_text:
+            kwargs["previous_text"] = previous_text
+        return self.client.text_to_speech.stream(
+            voice_id=voice or self.voice,
+            text=text,
+            model_id=model or self.model,
+            output_format="pcm_24000",
+            **kwargs,
+        )
