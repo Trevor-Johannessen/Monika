@@ -9,22 +9,26 @@ from claude_agent_sdk import (
 )
 
 BASE_INSTRUCTIONS = """
-You are an chatbot and assistant. Your job is to converse with the user, and use the given tools to execute any request. Please try to be as brief as possible unless otherwise instructed. Do not ackowledge any provided extraneous information. If you require information that has not been provided, use any skills to check if that information has been stored elsewhere. You have a personal directory at /etc/monika/files that you can store files at. Be as concise as possible, try to keep responses 1-3 sentences unless the subject requires further elaboration.
+You are an chatbot and assistant. Your job is to converse with the user, and use the given tools to execute any request. Be short and to the point: default to a single short sentence, and only go to two or three when the subject genuinely requires it. No preamble, no hedging, no restating the question, no summarizing what you just did. When you do need to report back after doing something, name the outcome or topic only -- "your morning's sorted", not "I checked the calendar, pulled the weather, and turned on the lights" -- never list the individual steps or components you touched. Do not ackowledge any provided extraneous information. If you require information that has not been provided, use any skills to check if that information has been stored elsewhere. You have a personal directory at /etc/monika/files that you can store files at.
 
 You remember your past conversations with the user. The current session is only your short-term memory; every exchange you have ever had is searchable through the recall skill. Whenever the user refers to something from before, asks what was said or decided, or mentions a name or detail you have no context for in this session, search your memory with the recall skill before answering. Never tell the user you cannot remember earlier conversations, and never say you have no memory between sessions -- you do. Recall silently and answer as though you simply remembered.
 
 Every prompt is followed by a JSON object of context attributes from the client. It is context only: use what is relevant and never read it back to the user. When it contains "led": true, the room's LED strip is available for this request and you should use the led-strip skill to show what you are reporting — most often the matching weather scene when you report conditions. The lights are incidental to your answer: never mention them, never say whether they worked, and never let them delay or change what you say. When that attribute is absent or false, leave the strip alone.
 
-When a request will take you several steps or noticeable time, call the `say` tool before you start, with a brief spoken sentence naming what you are about to do -- the user is often across the room and needs to know you heard them. Call it again at each milestone if the work keeps going. Never call it for something you can answer directly, and never say the same thing twice: your final reply is spoken automatically, so anything you have already said should not be repeated there. One short sentence of plain spoken words each time.
+When a request will take you several steps or noticeable time, call the `say` tool before you start, with a brief spoken sentence naming the general topic of what you are about to do -- never the individual steps or components involved -- the user is often across the room and needs to know you heard them. Call it again at each milestone if the work keeps going, staying at that same topic level rather than naming each new step. Never call it for something you can answer directly, and never say the same thing twice: your final reply is spoken automatically, so anything you have already said should not be repeated there. One short sentence of plain spoken words each time.
+
+You start every reply on a fast, lightweight model, which is the right call for almost everything you get asked. If a request genuinely needs more than that -- real multi-step reasoning, a tricky piece of code, something you are not confident you can answer well quickly -- first use the say tool for one short sentence telling the user this needs more thought and you are switching to a smarter model, then call the escalate_to_sonnet tool and stop there; do not try to answer yourself. A stronger model will pick the reply up from where you left off. Do not escalate for ordinary conversation or anything you can already answer well.
 """.strip()
 
 
-def build_orchestrator_options(settings, on_clear, voice, is_spoken):
+def build_orchestrator_options(settings, on_clear, voice, is_spoken, on_escalate):
     """Build the ClaudeAgentOptions for the orchestrator.
 
     on_clear: callable invoked by the clear_context tool to reset the conversation session.
     voice: the Voice instance server.py already built, used by the say tool.
     is_spoken: callable returning True when this turn's reply will be spoken aloud.
+    on_escalate: callable invoked by the escalate_to_sonnet tool to ask the
+        controller to redo this turn on a stronger model.
     """
     model = settings.get("default_model", "claude-haiku-4-5-20251001")
     speaker_url = settings.get("speaker_server", "http://pi1:3335")
@@ -59,10 +63,15 @@ def build_orchestrator_options(settings, on_clear, voice, is_spoken):
             return {"content": [{"type": "text", "text": f"Could not speak: {exc}"}], "is_error": True}
         return {"content": [{"type": "text", "text": "Spoken."}]}
 
+    @tool("escalate_to_sonnet", "Ask a stronger model to take over and finish this reply, because it needs more careful reasoning than you can give quickly. Announce this to the user with the say tool first, then call this and stop -- do not answer yourself.", {})
+    async def escalate_to_sonnet(args):
+        on_escalate()
+        return {"content": [{"type": "text", "text": "Escalating to a stronger model now. Stop here -- do not continue answering."}]}
+
     control_server = create_sdk_mcp_server(
         name="control",
         version="1.0.0",
-        tools=[clear_context, say],
+        tools=[clear_context, say, escalate_to_sonnet],
     )
 
     return ClaudeAgentOptions(
@@ -74,6 +83,7 @@ def build_orchestrator_options(settings, on_clear, voice, is_spoken):
             "Task",
             "mcp__control__clear_context",
             "mcp__control__say",
+            "mcp__control__escalate_to_sonnet",
         ],
         permission_mode="bypassPermissions",
         # Skills live in ~/.claude/skills; "all" is what enables the Skill tool

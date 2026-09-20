@@ -28,6 +28,11 @@ VOICE_INSTRUCTION = (
     '(e.g. "degrees" not "°", "and" not "&", "percent" not "%").'
 )
 
+ESCALATION_PROMPT = (
+    "Continue. Give the user's last message a complete, careful answer now, "
+    "using the extra reasoning you have here."
+)
+
 
 class Controller:
 
@@ -41,10 +46,15 @@ class Controller:
         self.history: list[dict] = []  # display-only, for webhooks
         self.initial_prompt = settings.get("inital_prompt", "")
         self.webhooks = settings.get("webhooks", [])
+        self._escalate = False
+        self.escalation_model = settings.get("escalation_model", "claude-sonnet-5")
         self._base_options: ClaudeAgentOptions = build_orchestrator_options(
-            settings, self.clear_session, voice, lambda: self._spoken
+            settings, self.clear_session, voice, lambda: self._spoken, self._request_escalation
         )
         self._restore_session()
+
+    def _request_escalation(self):
+        self._escalate = True
 
     def _restore_session(self):
         """Pick the live session back up after a restart, if it is still fresh.
@@ -153,11 +163,21 @@ class Controller:
 
         time_start = datetime.now()
         result = ""
+        self._escalate = False
         async for msg in query(prompt=send_text, options=opts):
             if isinstance(msg, ResultMessage):
                 self.session_id = msg.session_id
                 if msg.subtype == "success" and msg.result:
                     result = msg.result
+
+        if self._escalate:
+            self._escalate = False
+            escalate_opts = replace(opts, model=self.escalation_model, resume=self.session_id)
+            async for msg in query(prompt=ESCALATION_PROMPT, options=escalate_opts):
+                if isinstance(msg, ResultMessage):
+                    self.session_id = msg.session_id
+                    if msg.subtype == "success" and msg.result:
+                        result = msg.result
         time_end = datetime.now()
         time_delta = time_end - time_start
 
