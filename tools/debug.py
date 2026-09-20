@@ -1,15 +1,10 @@
-import os
 from controller import Controller
 from dotenv import load_dotenv
-from credentials import read_key
 import asyncio
 
 load_dotenv()
 
-# The Claude Agent SDK's `claude` CLI authenticates via ANTHROPIC_API_KEY.
-_anthropic_key = read_key("anthropic.key")
-if _anthropic_key:
-    os.environ["ANTHROPIC_API_KEY"] = _anthropic_key
+# Deliberately no ANTHROPIC_API_KEY here: see server.py.
 
 c = Controller()
 async def run():

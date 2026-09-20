@@ -2,15 +2,11 @@ from dotenv import load_dotenv
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI
 import os
-from credentials import read_key
 load_dotenv()
 
-# The Claude Agent SDK shells out to the `claude` CLI, which authenticates via the
-# ANTHROPIC_API_KEY environment variable (inherited by any subprocesses it spawns),
-# so this one key must live in the environment. Load it explicitly from the file.
-_anthropic_key = read_key("anthropic.key")
-if _anthropic_key:
-    os.environ["ANTHROPIC_API_KEY"] = _anthropic_key
+# The Claude Agent SDK shells out to the `claude` CLI. Deliberately no
+# ANTHROPIC_API_KEY here: that env var takes precedence over the claude.ai
+# subscription login and would switch this off pay-per-token API billing.
 
 from prompt import Prompt
 from io import BytesIO
