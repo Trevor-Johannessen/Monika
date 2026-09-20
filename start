@@ -1,9 +1,17 @@
 #!/bin/bash
 
 cd /usr/local/bin/monika
-PORT=$(jq -r '.port // empty' settings.json 2>/dev/null)
+PORT=${MONIKA_PORT:-$(jq -r '.port // empty' settings.json 2>/dev/null)}
 if [ -z "$PORT" ]; then
     PORT=$(jq -r '.port' defaults.json)
 fi
 export PATH="$HOME/.local/bin:$PATH"
-./venv/bin/uvicorn server:app --port "$PORT" --host 0.0.0.0
+
+UVICORN_ARGS=(server:app --port "$PORT" --host 0.0.0.0)
+if [ "${MONIKA_USE_TLS:-0}" = "1" ]; then
+    TLS_CERT=${MONIKA_TLS_CERT:-/var/lib/portal/tls/portal.crt}
+    TLS_KEY=${MONIKA_TLS_KEY:-/var/lib/portal/tls/portal.key}
+    UVICORN_ARGS+=(--ssl-certfile "$TLS_CERT" --ssl-keyfile "$TLS_KEY")
+fi
+
+exec /mnt/fs1/shared/venvs/monika/bin/uvicorn "${UVICORN_ARGS[@]}"

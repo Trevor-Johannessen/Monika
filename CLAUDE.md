@@ -11,14 +11,16 @@ The SDK shells out to the `claude` CLI binary — that must be on `PATH` at runt
 ## Running
 
 ```bash
-# Development (port 3334)
+# Development (port 3337)
 make debug
 
-# Production install + systemd service (port 3333)
+# Production install + systemd services (HTTP 3333, HTTPS 3334)
 make install
 ```
 
 The app is a uvicorn/FastAPI server (`server.py`). The production entrypoint is the `monika` shell script, managed by `monika.service` (systemd).
+
+Both `make debug` and `make install` use one shared virtualenv at `/mnt/fs1/shared/venvs/monika` (on the fs1 NFS mount, so every machine reuses it) rather than a per-checkout or per-host `./venv`. `make install` creates it if missing and installs `requirements.txt` into it; the `start` script and the `monika` CLI invoke its interpreter by absolute path.
 
 ## Configuration
 
@@ -64,7 +66,7 @@ The `agents` MCP server is gone entirely; `control` (holding `clear_context`) is
 
 **Steam:** handled by the `steam` skill (`~/.claude/skills/steam/`), not a sub-agent. Its `steam.py` helper reads `~/.credentials/steam.json` itself and prints a plain-text digest: `friends` (friends currently in TF2, or `--all-games` for any game) and `servers [<map>]` (player and server counts for a TF2 map, default `cp_powerhouse`). Stdlib-only Python; the orchestrator only ever runs the script, so the key stays out of the model's context.
 
-**Calendar:** handled by the `calendar` skill (`~/.claude/skills/calendar/`), not a sub-agent. Its `icloud_calendar.py` helper reads `~/.credentials/icloud.json` itself and talks CalDAV to `https://caldav.icloud.com`, printing a plain-text digest: `now`, `calendars`, `events <start> <end> [--calendar]`, `freebusy <start> <end>`, and `create --summary --start --end [--all-day ...]`. It reads (and expands recurring events) and creates, but cannot edit or delete. Two things to know: it needs `caldav`/`icalendar`, which are only in Monika's venv, so the script re-execs itself under `/usr/local/bin/monika/venv/bin/python` or the dev checkout's venv (override with `MONIKA_PYTHON`); and it is deliberately **not** named `calendar.py`, because a script by that name shadows the stdlib `calendar` module that caldav imports. `MONIKA_TIMEZONE` and `MONIKA_DEFAULT_CALENDAR` are read from the environment, falling back to parsing Monika's `.env` directly.
+**Calendar:** handled by the `calendar` skill (`~/.claude/skills/calendar/`), not a sub-agent. Its `icloud_calendar.py` helper reads `~/.credentials/icloud.json` itself and talks CalDAV to `https://caldav.icloud.com`, printing a plain-text digest: `now`, `calendars`, `events <start> <end> [--calendar]`, `freebusy <start> <end>`, and `create --summary --start --end [--all-day ...]`. It reads (and expands recurring events) and creates, but cannot edit or delete. Two things to know: it needs `caldav`/`icalendar`, which are only in Monika's venv, so the script re-execs itself under the shared venv at `/mnt/fs1/shared/venvs/monika/bin/python` (override with `MONIKA_PYTHON`); and it is deliberately **not** named `calendar.py`, because a script by that name shadows the stdlib `calendar` module that caldav imports. `MONIKA_TIMEZONE` and `MONIKA_DEFAULT_CALENDAR` are read from the environment, falling back to parsing Monika's `.env` directly.
 
 **Skill tone:** Monika is a conversational AI — output is often spoken aloud via TTS. When writing or editing skills, instruct the agent to respond in a natural, conversational tone. Avoid output formats that read poorly aloud (markdown tables, bulleted lists, headings, code blocks, parenthetical citations stacked together) unless the user explicitly asks for that format. Prefer flowing prose, short sentences, and natural connectives over structured layouts.
 

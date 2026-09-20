@@ -12,8 +12,8 @@ pairs, and writes them into the durable log that the `recall` skill searches.
 It is idempotent: exchanges already present (same session + timestamp) are
 skipped, so it is safe to re-run.
 
-    ./venv/bin/python3 tools/import_transcripts.py            # import
-    ./venv/bin/python3 tools/import_transcripts.py --dry-run  # preview only
+    /mnt/fs1/shared/venvs/monika/bin/python3 tools/import_transcripts.py            # import
+    /mnt/fs1/shared/venvs/monika/bin/python3 tools/import_transcripts.py --dry-run  # preview only
 """
 
 import argparse

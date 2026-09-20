@@ -1,4 +1,4 @@
-#!/usr/local/bin/monika/venv/bin/python3
+#!/mnt/fs1/shared/venvs/monika/bin/python3
 import json
 import os
 import sys

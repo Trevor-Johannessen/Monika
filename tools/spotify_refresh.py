@@ -1,4 +1,4 @@
-#! venv/bin/python3
+#!/mnt/fs1/shared/venvs/monika/bin/python3
 import os
 import sys
 
