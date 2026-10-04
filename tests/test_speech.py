@@ -1,12 +1,14 @@
 """Sentence splitting and mood-tag handling, the two pure pieces of speech.py."""
 
+import asyncio
 import os
 import sys
+import time
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from speech import SentenceSplitter, pcm_seconds, strip_mood_tag
+from speech import SentenceSplitter, SpeechStream, pcm_seconds, strip_mood_tag
 
 
 def feed_all(splitter, deltas):
@@ -114,6 +116,36 @@ class PcmSecondsTests(unittest.TestCase):
 
     def test_one_second_of_24k_mono_s16(self):
         self.assertAlmostEqual(pcm_seconds(24000 * 2), 1.0)
+
+
+
+class FakeVoice:
+    """One second of silence per sentence, delivered instantly."""
+
+    def stream_pcm(self, text, previous_text=None):
+        yield b"\x00\x00" * 24000
+
+
+class SpeechStreamAbortTests(unittest.IsolatedAsyncioTestCase):
+
+    async def test_abort_reports_what_has_started_playing(self):
+        speech = SpeechStream(FakeVoice())
+        speech._buddy = lambda *a, **k: None
+        for sentence in ("One.", "Two.", "Three."):
+            speech.say(sentence)
+        while len(speech._timeline) < 3:
+            await asyncio.sleep(0.01)
+        # Pretend 1.5 s of audio has played: "Two." is partway through.
+        speech._first_chunk_at = time.monotonic() - 1.5
+        self.assertEqual(speech.abort(), ["One.", "Two."])
+
+    async def test_abort_before_any_audio_heard_nothing(self):
+        speech = SpeechStream(FakeVoice())
+        speech._buddy = lambda *a, **k: None
+        self.assertEqual(speech.abort(), [])
+        speech.say("Too late.")
+        await speech._worker
+        self.assertEqual(speech._parts, [])
 
 
 if __name__ == "__main__":

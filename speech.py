@@ -140,6 +140,10 @@ class SpeechStream:
         self._parts = []
         self._closed = False
         self._first_chunk_at = None
+        # (sentence, offset in seconds where its audio starts), so an
+        # interruption can tell roughly how far into the reply the room got.
+        self._timeline = []
+        self._aborted = False
         self._buddy_shown = False
         self.mood = None
         self._worker = asyncio.create_task(self._run())
@@ -157,6 +161,26 @@ class SpeechStream:
         self._closed = True
         self._in.put_nowait(None)
         await self._worker
+
+    def abort(self):
+        """Stop speaking now. Returns the sentences the room has started hearing.
+
+        Hearing is estimated from the wall clock since the first chunk went out:
+        the speaker plays in real time, so anything whose audio starts after
+        that point never made it into the room.
+        """
+        elapsed = 0.0
+        if self._first_chunk_at is not None:
+            elapsed = time.monotonic() - self._first_chunk_at
+        heard = [text for text, start in self._timeline
+                 if self._first_chunk_at is not None and start < elapsed]
+        if not self._aborted:
+            self._aborted = True
+            self._closed = True
+            while not self._in.empty():
+                self._in.get_nowait()
+            self._in.put_nowait(None)
+        return heard
 
     async def chunks(self):
         """Async-iterate the PCM for the HTTP response body."""
@@ -176,6 +200,8 @@ class SpeechStream:
             text = await self._in.get()
             if text is None:
                 break
+            if self._aborted:
+                break
             try:
                 await self._speak(text, previous)
             except Exception as exc:  # a failed sentence must not end the turn
@@ -189,9 +215,12 @@ class SpeechStream:
             self._buddy_shown = True
             self._buddy("show", self.mood or "neutral", 30.0)
         loop = asyncio.get_running_loop()
+        self._timeline.append((text, self.audio_seconds))
 
         def pump():
             for chunk in self._voice.stream_pcm(text, previous_text=previous):
+                if self._aborted:
+                    break
                 if not chunk:
                     continue
                 if self._first_chunk_at is None:
@@ -203,7 +232,9 @@ class SpeechStream:
 
     async def _finish(self):
         """Correct Buddy's guessed duration and archive the turn as one WAV."""
-        if self._buddy_shown:
+        if self._buddy_shown and self._aborted:
+            self._buddy("hide")
+        elif self._buddy_shown:
             played = 0.0
             if self._first_chunk_at is not None:
                 played = time.monotonic() - self._first_chunk_at

@@ -25,10 +25,30 @@ How your reply reaches the user changes from turn to turn, and every prompt ends
 You may begin a reply with a single mood tag in square brackets -- one of alert, excited, happy, music, neutral, sad, sleepy, thinking, weather -- and the matching sprite goes up on the room monitor by itself. It is stripped before anything is spoken or shown. Use the one that fits the topic or tone, leave it off when none does, and never mention it or run the buddy command yourself.
 
 You start every reply on a fast, lightweight model, which is the right call for almost everything you get asked. If a request genuinely needs more than that -- real multi-step reasoning, a tricky piece of code, something you are not confident you can answer well quickly -- first write one short sentence telling the user this needs more thought and you are switching to a smarter model, then call the escalate_to_sonnet tool and stop there; do not try to answer yourself. A stronger model will pick the reply up from where you left off. Do not escalate for ordinary conversation or anything you can already answer well.
+
+Anything that will take more than a few seconds of work -- research, a multi-step job, anything you would otherwise hand to the Task tool -- goes to start_background_task instead, so the user can keep talking to you while it runs. Give it a short description and a complete, self-contained prompt (the worker sees nothing of this conversation), say in one short sentence that you are on it, and end your turn; do not wait for it. When it finishes, its result arrives as a message starting "[Background task finished"; tell the user the outcome then. Quick lookups that take a single tool call stay in the foreground.
+""".strip()
+
+BACKGROUND_INSTRUCTIONS = """
+You are a background worker for Monika, a home assistant. Nobody is watching you work and nobody can answer questions, so make reasonable assumptions and finish the job. When you are done, reply with a short plain-text summary of the outcome -- the facts Monika needs to tell the user, without markdown -- and nothing else.
 """.strip()
 
 
-def build_orchestrator_options(settings, on_clear, voice, is_spoken, on_escalate, get_speech):
+def build_background_options(settings):
+    """Options for a background worker: Monika's tools, a session of its own."""
+    return ClaudeAgentOptions(
+        system_prompt=BACKGROUND_INSTRUCTIONS,
+        allowed_tools=["Bash", "WebSearch"],
+        permission_mode="bypassPermissions",
+        skills="all",
+        model=settings.get("default_model", "claude-haiku-4-5-20251001"),
+        thinking={"type": "disabled"},
+        **({"cli_path": DEPLOYED_CLI} if os.path.isfile(DEPLOYED_CLI) else {}),
+    )
+
+
+def build_orchestrator_options(settings, on_clear, voice, is_spoken, on_escalate, get_speech,
+                               on_background):
     """Build the ClaudeAgentOptions for the orchestrator.
 
     on_clear: callable invoked by the clear_context tool to reset the conversation session.
@@ -38,6 +58,8 @@ def build_orchestrator_options(settings, on_clear, voice, is_spoken, on_escalate
         controller to redo this turn on a stronger model.
     get_speech: callable returning the turn's SpeechStream, or None when this
         turn is not being spoken as it is written.
+    on_background: callable(description, prompt) that starts a background
+        worker and reports its result back into the conversation later.
     """
     model = settings.get("default_model", "claude-haiku-4-5-20251001")
     speaker_url = settings.get("speaker_server", "http://pi1:3335")
@@ -84,10 +106,15 @@ def build_orchestrator_options(settings, on_clear, voice, is_spoken, on_escalate
         on_escalate()
         return {"content": [{"type": "text", "text": "Escalating to a stronger model now. Stop here -- do not continue answering."}]}
 
+    @tool("start_background_task", "Start a job that runs in the background while you keep talking to the user. The worker has your Bash, WebSearch and skills but sees none of this conversation, so the prompt must be complete on its own. Its result comes back to you as a later message. After calling this, tell the user you are on it and end your turn.", {"description": str, "prompt": str})
+    async def start_background_task(args):
+        on_background(args["description"], args["prompt"])
+        return {"content": [{"type": "text", "text": "Started. You will be told when it finishes -- end your turn now."}]}
+
     control_server = create_sdk_mcp_server(
         name="control",
         version="1.0.0",
-        tools=[clear_context, say, escalate_to_sonnet],
+        tools=[clear_context, say, escalate_to_sonnet, start_background_task],
     )
 
     return ClaudeAgentOptions(
@@ -100,6 +127,7 @@ def build_orchestrator_options(settings, on_clear, voice, is_spoken, on_escalate
             "mcp__control__clear_context",
             "mcp__control__say",
             "mcp__control__escalate_to_sonnet",
+            "mcp__control__start_background_task",
         ],
         permission_mode="bypassPermissions",
         # Skills live in ~/.claude/skills; "all" is what enables the Skill tool

@@ -7,3 +7,5 @@ class Prompt(BaseModel):
     # reply is finished; "mp3" is the whole clip in one piece.
     audio_format: str = "mp3"
     attributes: dict = {}
+    # The user spoke over the reply in flight: stop it, and answer this instead.
+    interrupt: bool = False

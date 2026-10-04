@@ -17,8 +17,9 @@ from claude_agent_sdk import (
     ClaudeSDKClient,
     ResultMessage,
     StreamEvent,
+    query,
 )
-from orchestrationAgent import build_orchestrator_options
+from orchestrationAgent import build_background_options, build_orchestrator_options
 from prompt import Prompt
 from speech import SentenceSplitter, strip_mood_tag
 
@@ -54,6 +55,25 @@ DELIVERY_SILENT = (
     "\n\nDelivery: this turn is written, not spoken. Nothing is said aloud."
 )
 
+INTERRUPTED_SILENT = (
+    "[The user cut in before you had said anything aloud, and what you were "
+    "doing was stopped. Their next message follows. It may redirect or refine "
+    "what you were working on; carry on from there only if it still makes sense.]"
+)
+
+INTERRUPTED_SPOKEN = (
+    "[The user cut in while you were speaking, and you were stopped. They heard "
+    "roughly this much of your reply, the last sentence possibly only in part: "
+    "\"{heard}\" Nothing after that was said. Their next message follows. It may "
+    "redirect or refine what you were saying; do not repeat what they already "
+    "heard, and carry on from there only if it still makes sense.]"
+)
+
+BACKGROUND_DONE = (
+    "[Background task finished: {description}]\n{result}\n\n"
+    "Tell the user the outcome now, briefly."
+)
+
 ESCALATION_PROMPT = (
     "Continue. Give the user's last message a complete, careful answer now, "
     "using the extra reasoning you have here."
@@ -64,6 +84,10 @@ class Controller:
 
     def __init__(self, settings, voice):
         self.settings = settings
+        self._voice = voice
+        # Background workers in flight. Holding a reference keeps a task from
+        # being garbage-collected before it reports back.
+        self._background: set[asyncio.Task] = set()
         self.session_id: str | None = None
         self.last_update = datetime.now()
         # Whether the reply to the turn in flight will be spoken. The say tool
@@ -72,6 +96,12 @@ class Controller:
         # The turn in flight, when it is being spoken as it is written. The say
         # tool writes into this instead of synthesising a clip of its own.
         self._speech = None
+        # The most recent spoken reply. It can still be playing after its turn
+        # has finished, so an interruption needs it past the turn's end.
+        self._last_speech = None
+        self._interrupted = False
+        # Prepended to the next prompt after an interruption.
+        self._interruption_note = None
         self.history: list[dict] = []  # display-only, for webhooks
         self.initial_prompt = settings.get("inital_prompt", "")
         self.webhooks = settings.get("webhooks", [])
@@ -81,6 +111,7 @@ class Controller:
         self._base_options: ClaudeAgentOptions = build_orchestrator_options(
             settings, self.clear_session, voice, lambda: self._spoken,
             self._request_escalation, lambda: self._speech,
+            self.start_background,
         )
         # One long-lived CLI for the whole conversation, instead of a fresh
         # process per prompt. Guarded by a lock because two concurrent prompts
@@ -209,8 +240,79 @@ class Controller:
 
     async def prompt(self, prompt: Prompt, speech=None) -> str:
         """Run one turn. Only one at a time: they share a single CLI session."""
+        if prompt.interrupt:
+            await self._interrupt()
         async with self._lock:
             return await self._run_turn(prompt, speech)
+
+    def start_background(self, description: str, prompt: str):
+        """Run a job on a session of its own; the conversation carries on.
+
+        These cannot be the CLI's own background subagents: while one of those
+        is running, the CLI will not read the next message, so Monika would be
+        exactly as stuck as with a foreground one.
+        """
+        # Announce the result aloud only if the conversation is happening aloud.
+        spoken = self._spoken
+        task = asyncio.create_task(self._run_background(description, prompt, spoken))
+        self._background.add(task)
+        task.add_done_callback(self._background.discard)
+
+    async def _run_background(self, description: str, prompt: str, spoken: bool):
+        result = ""
+        try:
+            async for msg in query(prompt=prompt, options=build_background_options(self.settings)):
+                if isinstance(msg, ResultMessage):
+                    result = msg.result or ""
+                    if msg.is_error:
+                        result = f"It failed: {result or msg.subtype}"
+        except Exception as exc:
+            result = f"It failed: {exc}"
+        if self.settings.get("verbose"):
+            print(f"Background task {description!r} finished: {result}")
+        report = Prompt(
+            prompt=BACKGROUND_DONE.format(description=description,
+                                          result=result or "(no output)"),
+            return_type="audio" if spoken else "text",
+        )
+        try:
+            answer = await self.prompt(report)
+            if spoken and answer.strip():
+                await self._announce(answer)
+        except Exception as exc:
+            print(f"Could not report background task {description!r}: {exc!r}")
+
+    async def _announce(self, text: str):
+        """Speak a reply nobody is waiting on an HTTP response for."""
+        audio = await asyncio.to_thread(self._voice.generate_voice, text)
+        await asyncio.to_thread(
+            requests.post,
+            f"{self.settings.get('speaker_server', 'http://pi1:3335')}/play",
+            files={"file": ("announce.mp3", audio, "audio/mpeg")},
+            data={"role": "voice"},
+            headers={"X-Client-Name": "monika"},
+            timeout=30,
+        )
+
+    async def _interrupt(self):
+        """Stop the reply in flight and remember what the user heard of it."""
+        heard = []
+        if self._last_speech is not None:
+            heard = self._last_speech.abort()
+            self._last_speech = None
+        if heard:
+            self._interruption_note = INTERRUPTED_SPOKEN.format(heard=" ".join(heard))
+        else:
+            self._interruption_note = INTERRUPTED_SILENT
+        # Only a turn that is still running has anything to stop; the reply
+        # may just as well be finished and merely still playing.
+        if self._lock.locked() and self._client is not None:
+            self._interrupted = True
+            try:
+                await self._client.interrupt()
+            except Exception as exc:
+                if self.settings.get("verbose"):
+                    print(f"Could not interrupt the turn: {exc!r}")
 
     async def _consume(self, client, splitter, speech) -> tuple[str, bool]:
         """Drain one response, speaking text as it arrives. -> (result, saw_result)"""
@@ -261,10 +363,16 @@ class Controller:
             send_text += DELIVERY_STREAMED if speech is not None else DELIVERY_WHOLE
         else:
             send_text += DELIVERY_SILENT
+        if self._interruption_note:
+            send_text = f"{self._interruption_note}\n\n{send_text}"
+            self._interruption_note = None
         if self._client is None and not self.session_id and self.initial_prompt:
             send_text = f"{self.initial_prompt}\n\n{send_text}"
 
         self._speech = speech
+        if speech is not None:
+            self._last_speech = speech
+        self._interrupted = False
         splitter = SentenceSplitter()
         time_start = datetime.now()
         result = ""
@@ -274,7 +382,7 @@ class Controller:
             await client.query(send_text)
             result, _ = await self._consume(client, splitter, speech)
 
-            if self._escalate:
+            if self._escalate and not self._interrupted:
                 self._escalate = False
                 # Same session, stronger model, no second process: swap the
                 # model on the live client and swap it back afterwards.
