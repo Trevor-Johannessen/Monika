@@ -9,3 +9,5 @@ class Prompt(BaseModel):
     attributes: dict = {}
     # The user spoke over the reply in flight: stop it, and answer this instead.
     interrupt: bool = False
+    # Uploaded files as {name, media_type, data(base64)}; see attachments.py.
+    attachments: list[dict] = []

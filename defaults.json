@@ -11,5 +11,6 @@
   "inital_prompt": "",
   "minecraft_rcon_host": "localhost",
   "minecraft_rcon_port": 25575,
-  "minecraft_rcon_password": ""
+  "minecraft_rcon_password": "",
+  "notify_urls": {}
 }

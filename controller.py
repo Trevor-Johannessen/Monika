@@ -19,6 +19,7 @@ from claude_agent_sdk import (
     StreamEvent,
     query,
 )
+from attachments import AttachmentError, build_blocks
 from orchestrationAgent import build_background_options, build_orchestrator_options
 from prompt import Prompt
 from speech import SentenceSplitter, strip_mood_tag
@@ -102,6 +103,11 @@ class Controller:
         self._interrupted = False
         # Prepended to the next prompt after an interruption.
         self._interruption_note = None
+        # Where the turn in flight came from ("discord", ...) and, for Discord,
+        # the thread or channel to answer in. A background job launched by the
+        # turn reports back to the same place.
+        self._source = None
+        self._reply_to = None
         self.history: list[dict] = []  # display-only, for webhooks
         self.initial_prompt = settings.get("inital_prompt", "")
         self.webhooks = settings.get("webhooks", [])
@@ -254,11 +260,13 @@ class Controller:
         """
         # Announce the result aloud only if the conversation is happening aloud.
         spoken = self._spoken
-        task = asyncio.create_task(self._run_background(description, prompt, spoken))
+        task = asyncio.create_task(self._run_background(
+            description, prompt, spoken, self._source, self._reply_to))
         self._background.add(task)
         task.add_done_callback(self._background.discard)
 
-    async def _run_background(self, description: str, prompt: str, spoken: bool):
+    async def _run_background(self, description: str, prompt: str, spoken: bool,
+                              source: str | None = None, reply_to=None):
         result = ""
         try:
             async for msg in query(prompt=prompt, options=build_background_options(self.settings)):
@@ -270,14 +278,25 @@ class Controller:
             result = f"It failed: {exc}"
         if self.settings.get("verbose"):
             print(f"Background task {description!r} finished: {result}")
+        # A client that registered a notify URL for its source (Discord) gets
+        # the answer as text, even for a spoken turn: its audio never reaches
+        # the room speaker.
+        notify_url = self.settings.get("notify_urls", {}).get(source) if source else None
+        attributes = {"source": source, "reply_to": reply_to} if notify_url else {}
         report = Prompt(
             prompt=BACKGROUND_DONE.format(description=description,
                                           result=result or "(no output)"),
-            return_type="audio" if spoken else "text",
+            return_type="audio" if spoken and not notify_url else "text",
+            attributes=attributes,
         )
         try:
             answer = await self.prompt(report)
-            if spoken and answer.strip():
+            if answer.strip() and notify_url:
+                await asyncio.to_thread(
+                    requests.post, notify_url,
+                    json={"text": answer, "reply_to": reply_to}, timeout=30,
+                )
+            elif answer.strip() and spoken:
                 await self._announce(answer)
         except Exception as exc:
             print(f"Could not report background task {description!r}: {exc!r}")
@@ -352,6 +371,13 @@ class Controller:
         # clear that happens during it should reach the finally below.
         self._cleared = False
 
+        try:
+            blocks = build_blocks(prompt.attachments)
+        except AttachmentError as exc:
+            return str(exc)
+        self._source = prompt.attributes.get("source")
+        self._reply_to = prompt.attributes.get("reply_to")
+
         base_text = self._build_prompt_text(prompt)
         self.history.append({"role": "user", "content": base_text})
         self.update_webhook()
@@ -379,7 +405,10 @@ class Controller:
         self._escalate = False
         try:
             client = await self._ensure_client()
-            await client.query(send_text)
+            if blocks:
+                await client.query(_one_message(send_text, blocks))
+            else:
+                await client.query(send_text)
             result, _ = await self._consume(client, splitter, speech)
 
             if self._escalate and not self._interrupted:
@@ -425,7 +454,11 @@ class Controller:
 
         # Long-term memory: the raw prompt, not the context-padded one the model
         # saw. Searched later by the `recall` skill.
-        conversations.append(prompt.prompt, result, session=self.session_id,
+        logged = prompt.prompt
+        if prompt.attachments:
+            names = ", ".join(str(a.get("name") or "file") for a in prompt.attachments)
+            logged += f"\n[attached: {names}]"
+        conversations.append(logged, result, session=self.session_id,
                              when=self.last_update)
         self._save_session()
 
@@ -434,3 +467,13 @@ class Controller:
 
         self.update_webhook()
         return result
+
+
+async def _one_message(text: str, blocks: list[dict]):
+    """One user message carrying text plus attachment blocks, as stream-json."""
+    yield {
+        "type": "user",
+        "message": {"role": "user", "content": [{"type": "text", "text": text}, *blocks]},
+        "parent_tool_use_id": None,
+        "session_id": "default",
+    }
