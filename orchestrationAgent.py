@@ -1,13 +1,36 @@
 import asyncio
 import os
+import re
 
 import requests
 
 from claude_agent_sdk import (
     ClaudeAgentOptions,
+    HookMatcher,
     create_sdk_mcp_server,
     tool,
 )
+
+# A prompt to Monika from inside one of her own turns waits for that turn to
+# end, and the turn waits for the command: a deadlock. On 2026-10-04 she ran
+# `curl localhost:3333/prompt` to "test herself" and hung for two minutes.
+# Her /prompt on either port, under any host name, or her `monika` CLI.
+SELF_PROMPT = re.compile(r":333[34]/prompt\b|(?:^|[;&|(]\s*)(?:[\w./~-]*/)?monika(?:\s|$)")
+
+
+async def block_self_prompt(input_data, tool_use_id, context):
+    command = (input_data.get("tool_input") or {}).get("command", "")
+    if not SELF_PROMPT.search(command):
+        return {}
+    return {"hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "deny",
+        "permissionDecisionReason": (
+            "That sends a prompt to you, Monika, while you are in the middle of a "
+            "turn; it would wait for this turn to finish and never return. You are "
+            "already running and reachable. Answer the user directly instead."),
+    }}
+
 
 # Deployed next to the service by `make install`, on local disk: the bundled
 # copy sits on the fs1 NFS mount and costs ~2.5 s to page in when it is cold.
@@ -29,6 +52,8 @@ You may begin a reply with a single mood tag in square brackets -- one of alert,
 You start every reply on a fast, lightweight model, which is the right call for almost everything you get asked. If a request genuinely needs more than that -- real multi-step reasoning, a tricky piece of code, something you are not confident you can answer well quickly -- first write one short sentence telling the user this needs more thought and you are switching to a smarter model, then call the escalate_to_sonnet tool and stop there; do not try to answer yourself. A stronger model will pick the reply up from where you left off. Do not escalate for ordinary conversation or anything you can already answer well.
 
 Anything that will take more than a few seconds of work -- research, a multi-step job, anything you would otherwise hand to the Task tool -- goes to start_background_task instead, so the user can keep talking to you while it runs. Give it a short description and a complete, self-contained prompt (the worker sees nothing of this conversation), say in one short sentence that you are on it, and end your turn; do not wait for it. When it finishes, its result arrives as a message starting "[Background task finished"; tell the user the outcome then. Quick lookups that take a single tool call stay in the foreground.
+
+Never send a prompt to yourself: no request to your own /prompt endpoint (port 3333 or 3334, on any host) and no running the `monika` command. You are already running, so it would only wait on the turn you are in. If the user asks whether you can hear them or whether something is working, answer them directly.
 """.strip()
 
 BACKGROUND_INSTRUCTIONS = """
@@ -132,6 +157,7 @@ def build_orchestrator_options(settings, on_clear, voice, is_spoken, on_escalate
             "mcp__control__start_background_task",
         ],
         permission_mode="bypassPermissions",
+        hooks={"PreToolUse": [HookMatcher(matcher="Bash", hooks=[block_self_prompt])]},
         # Skills live in ~/.claude/skills; "all" is what enables the Skill tool
         # and points the CLI at them. The led-strip skill is how the lights are driven.
         skills="all",
