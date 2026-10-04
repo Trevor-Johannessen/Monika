@@ -17,6 +17,7 @@ from speech import SpeechStream
 import asyncio
 import dashboard
 import json
+import requests
 
 
 with open('defaults.json', 'r') as f:
@@ -77,6 +78,14 @@ async def stream_prompt(data: Prompt):
         try:
             response = await controller.prompt(data, speech=speech)
             print(f"BOT> {response}")
+            # A streamed body is audio only; a client that also shows the
+            # text (Discord in a voice channel) gets it at its notify URL.
+            url = settings.get("notify_urls", {}).get(data.attributes.get("source"))
+            if url and response.strip():
+                await asyncio.to_thread(
+                    requests.post, url, timeout=30,
+                    json={"text": response, "reply_to": data.attributes.get("reply_to")},
+                )
         except Exception as exc:
             print(f"Turn failed: {exc!r}")
         finally:
