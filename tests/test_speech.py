@@ -122,7 +122,7 @@ class PcmSecondsTests(unittest.TestCase):
 class FakeVoice:
     """One second of silence per sentence, delivered instantly."""
 
-    def stream_pcm(self, text, previous_text=None):
+    def stream_pcm(self, text, previous_text=None, mood=None):
         yield b"\x00\x00" * 24000
 
 
