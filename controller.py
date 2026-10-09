@@ -231,6 +231,14 @@ class Controller:
         prompt.attributes["time"] = prompt.attributes.get(
             "time", datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
         )
+        # Add the day of the week to attributes
+        time_str = prompt.attributes.get("time")
+        if time_str:
+            try:
+                dt = datetime.strptime(time_str.split()[0], "%Y-%m-%d")
+                prompt.attributes["day"] = dt.strftime("%A")
+            except (ValueError, IndexError):
+                pass
         text = (
             f"{prompt.prompt}\n\nBelow is information that may help with the above prompt. "
             f"Only use relevant information:\n{prompt.attributes}"
