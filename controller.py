@@ -117,7 +117,7 @@ class Controller:
         self._base_options: ClaudeAgentOptions = build_orchestrator_options(
             settings, self.clear_session, voice, lambda: self._spoken,
             self._request_escalation, lambda: self._speech,
-            self.start_background,
+            self.start_background, lambda: (self._source, self._reply_to),
         )
         # One long-lived CLI for the whole conversation, instead of a fresh
         # process per prompt. Guarded by a lock because two concurrent prompts

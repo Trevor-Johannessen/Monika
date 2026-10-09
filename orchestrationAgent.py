@@ -1,10 +1,14 @@
 import asyncio
 import os
 import re
-from pathlib import Path
+import socket
+import sys
 from datetime import datetime
 
 import requests
+
+sys.path.insert(0, "/mnt/fs1/apps/sudo-approval")
+from sudolib import request_approval
 
 from claude_agent_sdk import (
     ClaudeAgentOptions,
@@ -77,7 +81,7 @@ def build_background_options(settings):
 
 
 def build_orchestrator_options(settings, on_clear, voice, is_spoken, on_escalate, get_speech,
-                               on_background):
+                               on_background, get_origin):
     """Build the ClaudeAgentOptions for the orchestrator.
 
     on_clear: callable invoked by the clear_context tool to reset the conversation session.
@@ -89,6 +93,8 @@ def build_orchestrator_options(settings, on_clear, voice, is_spoken, on_escalate
         turn is not being spoken as it is written.
     on_background: callable(description, prompt) that starts a background
         worker and reports its result back into the conversation later.
+    get_origin: callable returning (source, reply_to) for the current turn, as
+        the client sent them in its attributes.
     """
     model = settings.get("default_model", "claude-haiku-5-5-20260911")
     speaker_url = settings.get("speaker_server", "http://pi1:3335")
@@ -140,32 +146,25 @@ def build_orchestrator_options(settings, on_clear, voice, is_spoken, on_escalate
         on_background(args["description"], args["prompt"])
         return {"content": [{"type": "text", "text": "Started. You will be told when it finishes -- end your turn now."}]}
 
-    @tool("request_sudo_approval", "Request approval to run a sudo command. Provide the command, why you need it, what it does, and potential risks. The request will be added to a pending approval queue that the user reviews. Do not proceed without approval.", {"session_id": str, "command": str, "context": str, "purpose": str, "risks": str})
+    @tool("request_sudo_approval", "Request approval to run a sudo command on this machine. Provide the command (without sudo), what you were doing, why you need it, and potential risks. The request will be added to a pending approval queue that the user reviews; you are told the outcome in a later message. Do not proceed without approval.", {"command": str, "context": str, "purpose": str, "risks": str})
     async def request_sudo_approval(args):
-        approval_file = Path.home() / ".monika" / "pending-approval.sh"
-        session_id = args.get('session_id', 'unknown')
-
-        # Build the approval block
-        block = f"""@@APPROVAL_BLOCK_START
-SESSION_ID: {session_id}
-CONTEXT: {args.get('context', 'Unknown context')}
-PURPOSE: {args.get('purpose', 'Unknown purpose')}
-COMMAND: {args.get('command', 'Unknown command')}
-RISKS: {args.get('risks', 'Unknown risks')}
-@@APPROVAL_BLOCK_END
-"""
-
-        # Append to the approval file
-        try:
-            if not approval_file.exists():
-                approval_file.parent.mkdir(parents=True, exist_ok=True)
-
-            with open(approval_file, 'a') as f:
-                f.write(block + "\n")
-
-            return {"content": [{"type": "text", "text": f"Sudo approval request added to pending queue. Command: {args.get('command')}. Waiting for user approval to proceed."}]}
-        except Exception as e:
-            return {"content": [{"type": "text", "text": f"Error adding approval request: {e}"}], "is_error": True}
+        # The queue approve.py reads; approve.py tells this session the outcome,
+        # and posts it to the Discord thread when the request came from there.
+        source, reply_to = get_origin()
+        queued = request_approval(
+            source="discord" if (source or "").startswith("discord") else "monika",
+            # Monika has one session, so this only has to tell requests apart in the queue.
+            session_id=f"monika-{datetime.now():%Y%m%d-%H%M%S}-{os.urandom(2).hex()}",
+            command=args["command"],
+            context=args["context"],
+            purpose=args["purpose"],
+            risks=args["risks"],
+            host=socket.gethostname().split(".")[0],
+            reply_to=str(reply_to or ""),
+        )
+        if not queued:
+            return {"content": [{"type": "text", "text": "Error adding approval request to the queue."}], "is_error": True}
+        return {"content": [{"type": "text", "text": f"Sudo approval request added to pending queue. Command: {args['command']}. Waiting for user approval to proceed."}]}
 
     control_server = create_sdk_mcp_server(
         name="control",
