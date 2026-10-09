@@ -74,7 +74,7 @@ def build_background_options(settings):
         allowed_tools=["Bash", "WebSearch"],
         permission_mode="bypassPermissions",
         skills="all",
-        model=settings.get("default_model", "claude-haiku-5-5-20260911"),
+        model=settings.get("default_model", "claude-haiku-5-5"),
         thinking={"type": "disabled"},
         **({"cli_path": DEPLOYED_CLI} if os.path.isfile(DEPLOYED_CLI) else {}),
     )
@@ -96,7 +96,7 @@ def build_orchestrator_options(settings, on_clear, voice, is_spoken, on_escalate
     get_origin: callable returning (source, reply_to) for the current turn, as
         the client sent them in its attributes.
     """
-    model = settings.get("default_model", "claude-haiku-5-5-20260911")
+    model = settings.get("default_model", "claude-haiku-5-5")
     speaker_url = settings.get("speaker_server", "http://pi1:3335")
 
     @tool("clear_context", "Clears the conversation history. Use this when the user asks to reset, clear, or start a new conversation.", {})
