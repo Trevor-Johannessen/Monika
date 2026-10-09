@@ -2,8 +2,25 @@ import os
 from datetime import datetime
 import shutil
 from elevenlabs import ElevenLabs
+from elevenlabs.types.voice_settings import VoiceSettings
 
 from credentials import read_key
+
+_DEFAULT_SETTINGS = VoiceSettings(stability=0.5, style=0.3, similarity_boost=0.75)
+_MOOD_SETTINGS = {
+    "excited": VoiceSettings(stability=0.3, style=0.7, similarity_boost=0.75),
+    "happy": VoiceSettings(stability=0.35, style=0.6, similarity_boost=0.75),
+    "alert": VoiceSettings(stability=0.35, style=0.55, similarity_boost=0.75),
+    "weather": VoiceSettings(stability=0.4, style=0.5, similarity_boost=0.75),
+    "music": VoiceSettings(stability=0.35, style=0.6, similarity_boost=0.75),
+    "thinking": VoiceSettings(stability=0.55, style=0.25, similarity_boost=0.75),
+    "neutral": _DEFAULT_SETTINGS,
+    "sad": VoiceSettings(stability=0.65, style=0.15, similarity_boost=0.75),
+    "sleepy": VoiceSettings(stability=0.7, style=0.1, similarity_boost=0.75),
+}
+
+def _settings_for_mood(mood):
+    return _MOOD_SETTINGS.get((mood or "").lower(), _DEFAULT_SETTINGS)
 
 class Voice():
 
@@ -66,11 +83,12 @@ class Voice():
                 os._exit(0)
             return audio_data
 
-    def stream_pcm(self, text, previous_text=None, voice=None, model=None):
+    def stream_pcm(self, text, previous_text=None, voice=None, model=None, mood=None):
         """Yield raw 24 kHz mono s16 PCM for one sentence, as it is generated.
 
         `previous_text` is the sentence before this one; ElevenLabs uses it to
         keep prosody continuous across a reply that is synthesised piecemeal.
+        `mood` adjusts voice_settings for expressiveness.
         """
         kwargs = {}
         if previous_text:
@@ -80,5 +98,6 @@ class Voice():
             text=text,
             model_id=model or self.model,
             output_format="pcm_24000",
+            voice_settings=_settings_for_mood(mood),
             **kwargs,
         )

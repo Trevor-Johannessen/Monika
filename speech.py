@@ -218,7 +218,7 @@ class SpeechStream:
         self._timeline.append((text, self.audio_seconds))
 
         def pump():
-            for chunk in self._voice.stream_pcm(text, previous_text=previous):
+            for chunk in self._voice.stream_pcm(text, previous_text=previous, mood=self.mood):
                 if self._aborted:
                     break
                 if not chunk:
