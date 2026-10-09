@@ -1,6 +1,8 @@
 import asyncio
 import os
 import re
+from pathlib import Path
+from datetime import datetime
 
 import requests
 
@@ -138,10 +140,37 @@ def build_orchestrator_options(settings, on_clear, voice, is_spoken, on_escalate
         on_background(args["description"], args["prompt"])
         return {"content": [{"type": "text", "text": "Started. You will be told when it finishes -- end your turn now."}]}
 
+    @tool("request_sudo_approval", "Request approval to run a sudo command. Provide the command, why you need it, what it does, and potential risks. The request will be added to a pending approval queue that the user reviews. Do not proceed without approval.", {"session_id": str, "command": str, "context": str, "purpose": str, "risks": str})
+    async def request_sudo_approval(args):
+        approval_file = Path.home() / ".monika" / "pending-approval.sh"
+        session_id = args.get('session_id', 'unknown')
+
+        # Build the approval block
+        block = f"""@@APPROVAL_BLOCK_START
+SESSION_ID: {session_id}
+CONTEXT: {args.get('context', 'Unknown context')}
+PURPOSE: {args.get('purpose', 'Unknown purpose')}
+COMMAND: {args.get('command', 'Unknown command')}
+RISKS: {args.get('risks', 'Unknown risks')}
+@@APPROVAL_BLOCK_END
+"""
+
+        # Append to the approval file
+        try:
+            if not approval_file.exists():
+                approval_file.parent.mkdir(parents=True, exist_ok=True)
+
+            with open(approval_file, 'a') as f:
+                f.write(block + "\n")
+
+            return {"content": [{"type": "text", "text": f"Sudo approval request added to pending queue. Command: {args.get('command')}. Waiting for user approval to proceed."}]}
+        except Exception as e:
+            return {"content": [{"type": "text", "text": f"Error adding approval request: {e}"}], "is_error": True}
+
     control_server = create_sdk_mcp_server(
         name="control",
         version="1.0.0",
-        tools=[clear_context, say, escalate_to_sonnet, start_background_task],
+        tools=[clear_context, say, escalate_to_sonnet, start_background_task, request_sudo_approval],
     )
 
     return ClaudeAgentOptions(
@@ -155,6 +184,7 @@ def build_orchestrator_options(settings, on_clear, voice, is_spoken, on_escalate
             "mcp__control__say",
             "mcp__control__escalate_to_sonnet",
             "mcp__control__start_background_task",
+            "mcp__control__request_sudo_approval",
         ],
         permission_mode="bypassPermissions",
         hooks={"PreToolUse": [HookMatcher(matcher="Bash", hooks=[block_self_prompt])]},
