@@ -1,6 +1,6 @@
 # Monika Sudo Approval Framework
 
-When Monika needs to run a command with elevated privileges (`sudo`), she does not run it directly. She calls the `request_sudo_approval` MCP tool, which queues the request in the lab-wide approval framework at `/mnt/fs1/apps/sudo-approval/` (see its README). This creates an audit trail and gives you control over what runs on your system.
+When Monika needs to run a command with elevated privileges (`sudo`), she does not run it directly. She calls the `request_sudo_approval` MCP tool, which queues the request in the lab-wide approval framework (source in `~/repos/scripts/sudo-approval/`, see its README; `sudolib` comes from `~/repos/lib`, installed to `~/.local/lib/homelab/`). This creates an audit trail and gives you control over what runs on your system.
 
 ## How It Works
 
@@ -10,13 +10,13 @@ When Monika needs to run a command with elevated privileges (`sudo`), she does n
    - `purpose`: One line explaining why she needs sudo
    - `risks`: One line describing what could go wrong
 
-2. **Request queued:** The tool calls `sudolib.request_approval()`, which appends a block to `/mnt/fs1/apps/sudo-approval/pending.sh`. The tool fills in the rest itself:
+2. **Request queued:** The tool calls `sudolib.request_approval()`, which appends a block to `~/.local/share/sudo-approval/pending.sh`. The tool fills in the rest itself:
    - `SOURCE`: `discord` when the current turn came from Discord, otherwise `monika`
    - `REPLY_TO`: the Discord thread or channel id, for Discord turns
    - `HOST`: the machine Monika runs on, so the command runs there
    - `SESSION_ID`: a timestamped id that only tells requests apart in the queue (Monika has one session)
 
-3. **You review:** Run `/mnt/fs1/apps/sudo-approval/approve.py` and approve, deny or postpone each request.
+3. **You review:** Run `~/.local/share/sudo-approval/approve.py` and approve, deny or postpone each request.
 
 4. **Monika is told the outcome:** `approve.py` sends a prompt into her session saying whether the command was approved and ran, failed, or was denied. For a Discord request, her reply is posted to the thread the request came from.
 

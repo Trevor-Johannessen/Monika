@@ -4,10 +4,11 @@ import re
 import socket
 import sys
 from datetime import datetime
+from pathlib import Path
 
 import requests
 
-sys.path.insert(0, "/mnt/fs1/apps/sudo-approval")
+sys.path.insert(0, str(Path.home() / ".local" / "lib" / "homelab"))
 from sudolib import request_approval
 
 from claude_agent_sdk import (
