@@ -146,10 +146,24 @@ def build_orchestrator_options(settings, on_clear, voice, is_spoken, on_escalate
         on_background(args["description"], args["prompt"])
         return {"content": [{"type": "text", "text": "Started. You will be told when it finishes -- end your turn now."}]}
 
-    @tool("request_sudo_approval", "Request approval to run a sudo command on this machine. Provide the command (without sudo), what you were doing, why you need it, and potential risks. The request will be added to a pending approval queue that the user reviews; you are told the outcome in a later message. Do not proceed without approval.", {"command": str, "context": str, "purpose": str, "risks": str})
+    @tool("request_sudo_approval", "Request approval to run a sudo command. Provide the command (without sudo), what you were doing, why you need it, and potential risks. Optionally give host (a lab machine name such as minecraft2) to run it on that machine; it defaults to the local machine, the one Monika runs on. The request will be added to a pending approval queue that the user reviews; you are told the outcome in a later message. Do not proceed without approval.", {
+        "type": "object",
+        "properties": {
+            "command": {"type": "string"},
+            "context": {"type": "string"},
+            "purpose": {"type": "string"},
+            "risks": {"type": "string"},
+            "host": {"type": "string", "description": "Machine to run the command on, e.g. minecraft2. Omit for the local machine."},
+        },
+        "required": ["command", "context", "purpose", "risks"],
+    })
     async def request_sudo_approval(args):
         # The queue approve.py reads; approve.py tells this session the outcome,
         # and posts it to the Discord thread when the request came from there.
+        host = args.get("host") or socket.gethostname().split(".")[0]
+        # approve.py puts the host into a shell command, so keep it to a plain hostname.
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", host):
+            return {"content": [{"type": "text", "text": f"Invalid host name: {host!r}."}], "is_error": True}
         source, reply_to = get_origin()
         queued = request_approval(
             source="discord" if (source or "").startswith("discord") else "monika",
@@ -159,7 +173,7 @@ def build_orchestrator_options(settings, on_clear, voice, is_spoken, on_escalate
             context=args["context"],
             purpose=args["purpose"],
             risks=args["risks"],
-            host=socket.gethostname().split(".")[0],
+            host=host,
             reply_to=str(reply_to or ""),
         )
         if not queued:

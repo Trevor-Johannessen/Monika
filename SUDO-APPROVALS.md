@@ -9,11 +9,12 @@ When Monika needs to run a command with elevated privileges (`sudo`), she does n
    - `context`: One line summarizing what she was doing
    - `purpose`: One line explaining why she needs sudo
    - `risks`: One line describing what could go wrong
+   - `host` (optional): The lab machine to run it on, e.g. `minecraft2`. Omit it for the machine Monika runs on.
 
 2. **Request queued:** The tool calls `sudolib.request_approval()`, which appends a block to `~/.local/share/sudo-approval/pending.sh`. The tool fills in the rest itself:
    - `SOURCE`: `discord` when the current turn came from Discord, otherwise `monika`
    - `REPLY_TO`: the Discord thread or channel id, for Discord turns
-   - `HOST`: the machine Monika runs on, so the command runs there
+   - `HOST`: the `host` argument if given, otherwise the machine Monika runs on; `approve` runs the command there over SSH
    - `SESSION_ID`: a timestamped id that only tells requests apart in the queue (Monika has one session)
 
 3. **You review:** Run `approve` and approve, deny or postpone each request.
