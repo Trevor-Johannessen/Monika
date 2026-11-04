@@ -1,6 +1,6 @@
 # Monika Sudo Approval Framework
 
-When Monika needs to run a command with elevated privileges (`sudo`), she does not run it directly. She calls the `request_sudo_approval` MCP tool, which queues the request in the lab-wide approval framework (`approve.py` and `sudo-request.py` in `~/repos/scripts`, deployed to `/usr/local/bin/scripts`; see `~/repos/scripts/sudo-approval/README.md`; `sudolib` comes from `~/repos/lib`, installed to `/usr/local/lib/homelab/`). This creates an audit trail and gives you control over what runs on your system.
+When Monika needs to run a command with elevated privileges (`sudo`), she does not run it directly. She calls the `request_sudo_approval` MCP tool, which queues the request in the lab-wide approval framework (`approve.py` and `sudo-request.py` in `~/repos/bin`, deployed to `/usr/local/bin/scripts`; see `~/repos/bin/sudo-approval/README.md`; `sudolib` comes from `~/repos/lib`, installed to `/usr/local/lib/homelab/`). This creates an audit trail and gives you control over what runs on your system.
 
 ## How It Works
 
