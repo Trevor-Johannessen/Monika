@@ -58,7 +58,17 @@ async def prompt(data: Prompt):
         return StreamingResponse(audio_bytes, media_type="audio/mpeg")
     else:
         print(f"BOT> {response}") 
+        if data.speak and response.strip():
+            # In the background: the text must not wait on, or fail with, the speaker.
+            asyncio.create_task(speak_reply(response))
         return {"message": response}
+
+
+async def speak_reply(text):
+    try:
+        await controller._announce(text)
+    except Exception as exc:
+        print(f"Could not speak the reply: {exc!r}")
 
 
 async def stream_prompt(data: Prompt):

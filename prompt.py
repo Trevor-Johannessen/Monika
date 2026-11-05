@@ -7,6 +7,8 @@ class Prompt(BaseModel):
     # reply is finished; "mp3" is the whole clip in one piece.
     audio_format: str = "mp3"
     attributes: dict = {}
+    # A text reply that should also play on the room speaker (Minecraft chat).
+    speak: bool = False
     # The user spoke over the reply in flight: stop it, and answer this instead.
     interrupt: bool = False
     # Uploaded files as {name, media_type, data(base64)}; see attachments.py.
