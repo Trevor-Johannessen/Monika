@@ -67,10 +67,17 @@ You are a background worker for Monika, a home assistant. Nobody is watching you
 """.strip()
 
 
+# Model steps allowed per message, so one runaway request cannot spend without end. The
+# longest real turn in a week of use (2026-11) took six. Background jobs do more per request.
+MAX_TURNS = 25
+BACKGROUND_MAX_TURNS = 50
+
+
 def build_background_options(settings):
     """Options for a background worker: Monika's tools, a session of its own."""
     return ClaudeAgentOptions(
         system_prompt=BACKGROUND_INSTRUCTIONS,
+        max_turns=BACKGROUND_MAX_TURNS,
         allowed_tools=["Bash", "WebSearch"],
         permission_mode="bypassPermissions",
         skills="all",
@@ -199,6 +206,7 @@ def build_orchestrator_options(settings, on_clear, voice, is_spoken, on_escalate
             "mcp__control__start_background_task",
             "mcp__control__request_sudo_approval",
         ],
+        max_turns=MAX_TURNS,
         permission_mode="bypassPermissions",
         hooks={"PreToolUse": [HookMatcher(matcher="Bash", hooks=[block_self_prompt])]},
         # Skills live in ~/.claude/skills; "all" is what enables the Skill tool

@@ -81,6 +81,9 @@ ESCALATION_PROMPT = (
 )
 
 
+TURN_LIMIT_REPLY = "I hit my step limit on that one and stopped, so it may be only partly done."
+
+
 class Controller:
 
     def __init__(self, settings, voice):
@@ -356,6 +359,11 @@ class Controller:
                 self.session_id = msg.session_id
                 if msg.subtype == "success" and msg.result:
                     result = msg.result
+                elif msg.subtype == "error_max_turns":
+                    # A stopped turn has no result, which would otherwise be silence.
+                    result = TURN_LIMIT_REPLY
+                    if speech is not None:
+                        speech.say(result)
         return result, saw_result
 
     def _feed_speech(self, event: dict, splitter: SentenceSplitter, speech) -> None:
