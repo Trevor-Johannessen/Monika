@@ -10,7 +10,6 @@ the last one.
 import asyncio
 import os
 import re
-import subprocess
 import time
 import wave
 from datetime import datetime
@@ -130,11 +129,10 @@ class SpeechStream:
     `_out` as they arrive from the TTS; the HTTP response body iterates them.
     """
 
-    def __init__(self, voice, directory=None, verbose=False, agent="monika"):
+    def __init__(self, voice, directory=None, verbose=False):
         self._voice = voice
         self._directory = directory
         self._verbose = verbose
-        self._agent = agent
         self._in = asyncio.Queue()
         self._out = asyncio.Queue()
         self._parts = []
@@ -144,7 +142,6 @@ class SpeechStream:
         # interruption can tell roughly how far into the reply the room got.
         self._timeline = []
         self._aborted = False
-        self._buddy_shown = False
         self.mood = None
         self._worker = asyncio.create_task(self._run())
 
@@ -211,9 +208,6 @@ class SpeechStream:
         await self._finish()
 
     async def _speak(self, text, previous):
-        if not self._buddy_shown:
-            self._buddy_shown = True
-            self._buddy("show", self.mood or "neutral", 30.0)
         loop = asyncio.get_running_loop()
         self._timeline.append((text, self.audio_seconds))
 
@@ -231,18 +225,7 @@ class SpeechStream:
         await asyncio.to_thread(pump)
 
     async def _finish(self):
-        """Correct Buddy's guessed duration and archive the turn as one WAV."""
-        if self._buddy_shown and self._aborted:
-            self._buddy("hide")
-        elif self._buddy_shown:
-            played = 0.0
-            if self._first_chunk_at is not None:
-                played = time.monotonic() - self._first_chunk_at
-            remaining = self.audio_seconds - played
-            if remaining > 1.0:
-                self._buddy("show", self.mood or "neutral", remaining)
-            else:
-                self._buddy("hide")
+        """Archive the turn as one WAV."""
         if self._directory and self._parts:
             try:
                 await asyncio.to_thread(self._write_wav)
@@ -257,20 +240,3 @@ class SpeechStream:
             out.setsampwidth(SAMPLE_WIDTH)
             out.setframerate(SAMPLE_RATE)
             out.writeframes(b"".join(self._parts))
-
-    def _buddy(self, command, mood=None, seconds=None):
-        """Put the sprite up (or take it down) without blocking the audio."""
-        if command == "hide":
-            argv = ["buddy", "hide"]
-        else:
-            argv = ["buddy", "show", mood, "--mode", "speech",
-                    "--audio-seconds", f"{seconds:.1f}", "--agent", self._agent]
-
-        def run():
-            try:
-                subprocess.run(argv, capture_output=True, timeout=10)
-            except Exception as exc:
-                if self._verbose:
-                    print(f"buddy failed: {exc}")
-
-        asyncio.get_running_loop().run_in_executor(None, run)

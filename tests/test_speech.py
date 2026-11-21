@@ -130,7 +130,6 @@ class SpeechStreamAbortTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_abort_reports_what_has_started_playing(self):
         speech = SpeechStream(FakeVoice())
-        speech._buddy = lambda *a, **k: None
         for sentence in ("One.", "Two.", "Three."):
             speech.say(sentence)
         while len(speech._timeline) < 3:
@@ -141,7 +140,6 @@ class SpeechStreamAbortTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_abort_before_any_audio_heard_nothing(self):
         speech = SpeechStream(FakeVoice())
-        speech._buddy = lambda *a, **k: None
         self.assertEqual(speech.abort(), [])
         speech.say("Too late.")
         await speech._worker
