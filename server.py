@@ -15,6 +15,7 @@ from voice_elevenlabs import Voice as ElevenLabsVoice
 from controller import Controller
 from speech import SpeechStream
 import asyncio
+import chat
 import dashboard
 import json
 import requests
@@ -41,6 +42,7 @@ voice = Voice(
 )
 controller = Controller(settings, voice)
 dashboard.register(app, voice_directory=settings.get('voice_directory'))
+chat.register(app)
 
 @app.post("/prompt")
 async def prompt(data: Prompt):
