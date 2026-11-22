@@ -42,7 +42,7 @@ voice = Voice(
 )
 controller = Controller(settings, voice)
 dashboard.register(app, voice_directory=settings.get('voice_directory'))
-chat.register(app)
+chat.register(app, voice)
 
 @app.post("/prompt")
 async def prompt(data: Prompt):

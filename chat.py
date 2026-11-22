@@ -1,9 +1,13 @@
 """A small chat page for talking to Monika, meant to be embedded as an iframe
 (the Home Assistant dashboard's webpage card). It posts to /prompt on the same
-server; the Voice switch sets `speak` so the reply also plays on the room speaker.
+server; the Voice switch has the reply read aloud in the browser itself, using the
+MP3 from /chat/speak, rather than on the room speaker.
 """
+import asyncio
+
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
+from pydantic import BaseModel
 
 _HTML = """<!doctype html>
 <html>
@@ -62,6 +66,10 @@ const text = document.getElementById("text");
 const send = document.getElementById("send");
 const voice = document.getElementById("voice");
 const history = JSON.parse(localStorage.getItem("monika-chat") || "[]");
+// One element for all replies: playing it inside the Send click unlocks it, so the
+// reply can start later without the browser's autoplay block.
+const player = new Audio();
+const SILENCE = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 
 voice.checked = localStorage.getItem("monika-chat-voice") === "1";
 voice.onchange = () => localStorage.setItem("monika-chat-voice", voice.checked ? "1" : "0");
@@ -83,11 +91,13 @@ async function submit() {
   add("user", prompt);
   const pending = add("bot", "Thinking…", "pending");
   send.disabled = true;
+  const speak = voice.checked;
+  if (speak) { player.src = SILENCE; player.play().catch(() => {}); }
   try {
     const r = await fetch("/prompt", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({prompt, speak: voice.checked,
+      body: JSON.stringify({prompt,
                             attributes: {source: "homeassistant-dashboard"}}),
     });
     if (!r.ok) throw new Error("HTTP " + r.status);
@@ -96,6 +106,7 @@ async function submit() {
     pending.textContent = reply;
     history.push({role: "user", text: prompt}, {role: "bot", text: reply});
     localStorage.setItem("monika-chat", JSON.stringify(history.slice(-50)));
+    if (speak && reply.trim()) say(reply);
   } catch (e) {
     pending.className = "msg bot error";
     pending.textContent = "Couldn't reach Monika (" + e.message + ")";
@@ -103,6 +114,22 @@ async function submit() {
   send.disabled = false;
   log.scrollTop = log.scrollHeight;
   text.focus();
+}
+
+async function say(reply) {
+  try {
+    const r = await fetch("/chat/speak", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({text: reply}),
+    });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    URL.revokeObjectURL(player.src);
+    player.src = URL.createObjectURL(await r.blob());
+    await player.play();
+  } catch (e) {
+    add("bot", "Couldn't play the reply (" + e.message + ")", "error");
+  }
 }
 
 document.getElementById("form").onsubmit = e => { e.preventDefault(); submit(); };
@@ -113,7 +140,17 @@ text.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault
 """
 
 
-def register(app: FastAPI) -> None:
+class _Speak(BaseModel):
+    text: str
+
+
+def register(app: FastAPI, voice) -> None:
     @app.get("/chat", response_class=HTMLResponse)
     async def chat_page():
         return HTMLResponse(_HTML)
+
+    @app.post("/chat/speak")
+    async def chat_speak(body: _Speak):
+        # A blocking ElevenLabs call; keep it off the event loop.
+        audio = await asyncio.to_thread(voice.generate_voice, body.text)
+        return Response(audio, media_type="audio/mpeg")
