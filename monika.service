@@ -1,10 +1,16 @@
 [Unit]
 Description=Just Monika.
+After=network-online.target
+Wants=network-online.target
+# Home (WorkingDirectory=~) and the shared venv are NFS mounts.
+RequiresMountsFor=/mnt/fs2/home/tjohannessen /mnt/fs1/shared/venvs/monika
 
 [Service]
 User=tjohannessen
 WorkingDirectory=~
 ExecStart=/usr/local/bin/monika/start
+Restart=on-failure
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
