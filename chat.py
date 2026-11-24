@@ -3,9 +3,10 @@
 server; the Voice switch has the reply read aloud in the browser itself, using the
 MP3 from /chat/speak, rather than on the room speaker.
 
-Every load of the page starts Monika on a fresh session (/chat/new), so opening
-the dashboard always begins a new conversation. The dropdown lists earlier
-sessions from the conversation log; picking one resumes it (/chat/resume).
+Each load of the page starts with an empty chat log (old messages would be
+stale), but Monika's session is left alone. The dropdown lists earlier
+sessions from the conversation log; picking one resumes it (/chat/resume), and
+"New conversation" starts a fresh session (/chat/new).
 """
 import asyncio
 from datetime import datetime
@@ -59,7 +60,7 @@ _HTML = """<!doctype html>
 <body>
 <header>
   <b>Monika</b>
-  <select id="convs"><option value="">New conversation</option></select>
+  <select id="convs"><option value="">Current conversation</option><option value="new">New conversation</option></select>
   <label class="switch">Text
     <input type="checkbox" id="voice"><span class="track"></span>
   Voice</label>
@@ -91,16 +92,11 @@ function add(role, content, extra) {
   log.scrollTop = log.scrollHeight;
   return div;
 }
-// Opening the page (the dashboard) always starts a fresh conversation.
-async function startNew() {
-  log.innerHTML = "";
-  await fetch("/chat/new", {method: "POST"});
-}
 
 async function loadConversations() {
   try {
     const list = await (await fetch("/chat/conversations")).json();
-    convs.length = 1;
+    convs.length = 2;
     for (const c of list) {
       const o = document.createElement("option");
       o.value = c.session;
@@ -111,8 +107,13 @@ async function loadConversations() {
 }
 
 convs.onchange = async () => {
-  if (!convs.value) { await startNew(); return; }
   log.innerHTML = "";
+  if (!convs.value) return;
+  if (convs.value === "new") {
+    await fetch("/chat/new", {method: "POST"});
+    convs.value = "";
+    return;
+  }
   const pending = add("bot", "Loading…", "pending");
   try {
     const r = await fetch("/chat/resume", {
@@ -133,7 +134,7 @@ convs.onchange = async () => {
   text.focus();
 };
 
-startNew().then(loadConversations);
+loadConversations();
 
 async function submit() {
   const prompt = text.value.trim();
