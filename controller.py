@@ -173,6 +173,18 @@ class Controller:
         self._cleared = True
         self._save_session()
 
+    async def switch_session(self, session_id: str | None):
+        """Start a fresh conversation (None) or resume an earlier one by id.
+
+        Waits for any turn in flight, which shares the one session.
+        """
+        async with self._lock:
+            await self._disconnect()
+            self.session_id = session_id
+            self.history = []
+            self.last_update = datetime.now()
+            self._save_session()
+
     async def _disconnect(self):
         client, self._client = self._client, None
         self._drop_client = False

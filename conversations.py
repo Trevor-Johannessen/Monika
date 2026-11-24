@@ -74,6 +74,21 @@ def read_all(since: datetime | None = None):
             yield entry
 
 
+def sessions(within_days: int = 30) -> dict[str, list[dict]]:
+    """Exchanges grouped by session id, in order of each session's last exchange.
+
+    30 days by default: the `claude` CLI deletes older transcripts, so those
+    sessions can no longer be resumed.
+    """
+    since = datetime.now() - timedelta(days=within_days)
+    grouped: dict[str, list[dict]] = {}
+    for entry in read_all(since=since):
+        sid = entry.get("session")
+        if sid:
+            grouped.setdefault(sid, []).append(entry)
+    return dict(sorted(grouped.items(), key=lambda kv: kv[1][-1]["ts"]))
+
+
 def recent(limit: int = 5, within_days: int | None = None) -> list[dict]:
     """Return the last `limit` exchanges, newest last."""
     since = datetime.now() - timedelta(days=within_days) if within_days else None

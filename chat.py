@@ -2,10 +2,16 @@
 (the Home Assistant dashboard's webpage card). It posts to /prompt on the same
 server; the Voice switch has the reply read aloud in the browser itself, using the
 MP3 from /chat/speak, rather than on the room speaker.
+
+Every load of the page starts Monika on a fresh session (/chat/new), so opening
+the dashboard always begins a new conversation. The dropdown lists earlier
+sessions from the conversation log; picking one resumes it (/chat/resume).
 """
 import asyncio
+from datetime import datetime
 
-from fastapi import FastAPI
+import conversations
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 
@@ -23,6 +29,8 @@ _HTML = """<!doctype html>
   header { display: flex; align-items: center; justify-content: space-between;
            padding: 10px 14px; border-bottom: 1px solid #eee; }
   header b { font-size: 15px; }
+  header select { flex: 1; min-width: 0; margin: 0 12px; padding: 4px 6px; font: inherit;
+                  font-size: 13px; border: 1px solid #ddd; border-radius: 6px; background: #fff; }
   .switch { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #616161;
             cursor: pointer; user-select: none; }
   .switch input { display: none; }
@@ -51,6 +59,7 @@ _HTML = """<!doctype html>
 <body>
 <header>
   <b>Monika</b>
+  <select id="convs"><option value="">New conversation</option></select>
   <label class="switch">Text
     <input type="checkbox" id="voice"><span class="track"></span>
   Voice</label>
@@ -65,7 +74,7 @@ const log = document.getElementById("log");
 const text = document.getElementById("text");
 const send = document.getElementById("send");
 const voice = document.getElementById("voice");
-const history = JSON.parse(localStorage.getItem("monika-chat") || "[]");
+const convs = document.getElementById("convs");
 // One element for all replies: playing it inside the Send click unlocks it, so the
 // reply can start later without the browser's autoplay block.
 const player = new Audio();
@@ -82,7 +91,49 @@ function add(role, content, extra) {
   log.scrollTop = log.scrollHeight;
   return div;
 }
-history.forEach(m => add(m.role, m.text));
+// Opening the page (the dashboard) always starts a fresh conversation.
+async function startNew() {
+  log.innerHTML = "";
+  await fetch("/chat/new", {method: "POST"});
+}
+
+async function loadConversations() {
+  try {
+    const list = await (await fetch("/chat/conversations")).json();
+    convs.length = 1;
+    for (const c of list) {
+      const o = document.createElement("option");
+      o.value = c.session;
+      o.textContent = c.label;
+      convs.appendChild(o);
+    }
+  } catch (e) {}
+}
+
+convs.onchange = async () => {
+  if (!convs.value) { await startNew(); return; }
+  log.innerHTML = "";
+  const pending = add("bot", "Loading…", "pending");
+  try {
+    const r = await fetch("/chat/resume", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({session: convs.value}),
+    });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    pending.remove();
+    for (const m of (await r.json()).messages) {
+      if (m.user) add("user", m.user);
+      if (m.assistant) add("bot", m.assistant);
+    }
+  } catch (e) {
+    pending.className = "msg bot error";
+    pending.textContent = "Couldn't resume that conversation (" + e.message + ")";
+  }
+  text.focus();
+};
+
+startNew().then(loadConversations);
 
 async function submit() {
   const prompt = text.value.trim();
@@ -104,8 +155,6 @@ async function submit() {
     const reply = (await r.json()).message || "";
     pending.className = "msg bot";
     pending.textContent = reply;
-    history.push({role: "user", text: prompt}, {role: "bot", text: reply});
-    localStorage.setItem("monika-chat", JSON.stringify(history.slice(-50)));
     if (speak && reply.trim()) say(reply);
   } catch (e) {
     pending.className = "msg bot error";
@@ -144,10 +193,43 @@ class _Speak(BaseModel):
     text: str
 
 
-def register(app: FastAPI, voice) -> None:
+class _Resume(BaseModel):
+    session: str
+
+
+def _label(entries: list[dict]) -> str:
+    when = datetime.strptime(entries[-1]["ts"], "%Y-%m-%dT%H:%M:%S")
+    first = " ".join(entries[0].get("user", "").split())
+    if len(first) > 50:
+        first = first[:50] + "…"
+    return f"{when:%b %d, %-I:%M %p} · {first}"
+
+
+def register(app: FastAPI, voice, controller) -> None:
     @app.get("/chat", response_class=HTMLResponse)
     async def chat_page():
         return HTMLResponse(_HTML)
+
+    @app.post("/chat/new")
+    async def chat_new():
+        await controller.switch_session(None)
+        return {"ok": True}
+
+    @app.get("/chat/conversations")
+    async def chat_conversations():
+        """Newest first; only sessions recent enough to still be resumable."""
+        grouped = conversations.sessions()
+        return [{"session": sid, "label": _label(entries)}
+                for sid, entries in reversed(list(grouped.items()))][:30]
+
+    @app.post("/chat/resume")
+    async def chat_resume(body: _Resume):
+        entries = conversations.sessions().get(body.session)
+        if not entries:
+            raise HTTPException(404, "No such conversation")
+        await controller.switch_session(body.session)
+        return {"messages": [{"user": e.get("user", ""), "assistant": e.get("assistant", "")}
+                             for e in entries]}
 
     @app.post("/chat/speak")
     async def chat_speak(body: _Speak):
